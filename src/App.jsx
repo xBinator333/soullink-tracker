@@ -455,9 +455,9 @@ function EncModal({ mode, pendingEnc, pokemonList, player, customLocations, used
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
                   {[
-                    { label: "Normball", multi: 1, emoji: "⚪" },
-                    { label: "Superball", multi: 1.5, emoji: "🔵" },
-                    { label: "Hyperball", multi: 2, emoji: "🟡" },
+                    { label: "Normball", multi: 1,   sprite: "https://raw.githubusercontent.com/msikma/pokesprite/master/items/ball/poke.png" },
+                    { label: "Superball", multi: 1.5, sprite: "https://raw.githubusercontent.com/msikma/pokesprite/master/items/ball/great.png" },
+                    { label: "Hyperball", multi: 2,   sprite: "https://raw.githubusercontent.com/msikma/pokesprite/master/items/ball/ultra.png" },
                   ].map(ball => {
                     const pct = calcCatchRate(species.catchRate, ball.multi);
                     const col = catchRateColor(pct);
@@ -466,7 +466,8 @@ function EncModal({ mode, pendingEnc, pokemonList, player, customLocations, used
                         textAlign: "center", padding: "8px 4px",
                         background: `${col}12`, borderRadius: 7,
                         border: `1px solid ${col}44` }}>
-                        <div style={{ fontSize: 18, marginBottom: 4 }}>{ball.emoji}</div>
+                        <img src={ball.sprite} alt={ball.label}
+                          style={{ width: 32, height: 32, imageRendering: "pixelated", marginBottom: 4 }} />
                         <div style={{ fontWeight: 900, fontSize: 16, color: col }}>{pct}%</div>
                         <div className="mono" style={{ fontSize: 8, color: C.sub, marginTop: 2 }}>{ball.label}</div>
                       </div>
@@ -746,13 +747,20 @@ export default function App() {
 
   const allEnc = [...st.p1.encounters, ...st.p2.encounters];
   const badgeCount = st.badges.filter(Boolean).length;
+  const rivalsDone = st.rivalsDone || {};
 
-  // Vollständige Cap-Liste in chronologischer Reihenfolge:
-  // Arena 1-8 (mit Orden) → Top 4 (4 Mitglieder) → Champ
-  // Rivalenkämpfe werden in der Stats/Cap-Anzeige separat aufgelistet
-  // Aktiver Cap = höchster Arena-Cap (basierend auf Orden) + ggf. Top4/Champ wenn manuell markiert
-  const currentCap = GYM_CAPS[Math.min(badgeCount, GYM_CAPS.length - 1)];
-  const capLevel = currentCap?.level || 13;
+  // Aktiver Cap = nächster noch nicht erledigter Eintrag in ALL_CAPS
+  // Orden: erledigt wenn st.badges[badgeIdx] === true
+  // Rivalen: erledigt wenn rivalsDone[rivalKey] === true
+  // Elite/Champ: immer noch offen (kein Toggle, nur als Info)
+  const nextCapIdx = ALL_CAPS.findIndex(c => {
+    if (c.type === "gym") return !st.badges[c.badgeIdx];
+    if (c.type === "rival") return !rivalsDone[c.rivalKey];
+    return true; // elite/champ immer als nächstes sobald alle Orden/Rivalen durch
+  });
+  const currentCapEntry = nextCapIdx >= 0 ? ALL_CAPS[nextCapIdx] : ALL_CAPS[ALL_CAPS.length - 1];
+  const capLevel = currentCapEntry.level;
+  const currentCap = currentCapEntry;
 
   const p1Alive = st.p1.encounters.filter(e => e.status === "team" || e.status === "box").length;
   const p2Alive = st.p2.encounters.filter(e => e.status === "team" || e.status === "box").length;
@@ -1000,68 +1008,90 @@ export default function App() {
               display: "flex", alignItems: "center", gap: 6 }}>
             <span>↻</span><span className="mono">Run #{st.runNumber}</span>
           </button>
-          <span className="mono" style={{ fontSize: 10, color: C.sub, marginRight: 12 }}>{routesDone} Orte</span>
-          <div style={{ padding: "4px 12px", borderRadius: 6,
-            background: `${C.p1}14`, border: `1px solid ${C.p1}33` }}>
-            <span className="mono" style={{ fontSize: 10, color: C.p1 }}>
-              CAP · LV {capLevel} · {currentCap?.name}
-            </span>
-          </div>
+          <span className="mono" style={{ fontSize: 10, color: C.sub }}>{routesDone} Orte</span>
         </header>
 
         <div style={{ background: C.panel, borderBottom: `1px solid ${C.border}`,
-          padding: "10px 16px", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-          {/* Orden mit echten Sprites */}
-          {GYM_CAPS.map((c, i) => {
-            const earned = st.badges[i];
-            const isCurr = i === badgeCount;
+          padding: "10px 16px", display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+
+          {/* Chronologische Leiste: Orden + Rivalen anklickbar */}
+          {ALL_CAPS.filter(c => c.type === "gym" || c.type === "rival").map((c, i) => {
+            const done = c.type === "gym" ? st.badges[c.badgeIdx] : rivalsDone[c.rivalKey];
+            const isNext = currentCapEntry === c;
+            const isRival = c.type === "rival";
+
             return (
               <button key={i} onClick={() => {
-                const b = [...st.badges]; b[i] = !b[i];
-                writeState({ ...st, badges: b });
+                if (isRival) {
+                  writeState({ ...st, rivalsDone: { ...rivalsDone, [c.rivalKey]: !rivalsDone[c.rivalKey] } });
+                } else {
+                  const b = [...st.badges]; b[c.badgeIdx] = !b[c.badgeIdx];
+                  writeState({ ...st, badges: b });
+                }
               }} title={`${c.name} · Cap Lv ${c.level}`}
-                style={{ background: "none", border: "none", cursor: "pointer", padding: 2,
-                  display: "flex", flexDirection: "column", alignItems: "center", gap: 0,
-                  position: "relative" }}>
-                <div style={{
-                  width: 44, height: 44,
-                  borderRadius: 8,
-                  border: `2px solid ${earned ? "#ffffff55" : isCurr ? C.p1 + "88" : C.border}`,
-                  background: earned ? "transparent" : `${C.lift}cc`,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  filter: earned ? "none" : "grayscale(1) opacity(0.35)",
-                  boxShadow: earned ? "0 0 12px #ffffff33, 0 2px 8px #0008" : isCurr ? `0 0 8px ${C.p1}44` : "none",
-                  transition: "all .2s",
-                  overflow: "hidden" }}>
-                  <img src={c.sprite} alt={c.name}
-                    style={{ width: 38, height: 38, objectFit: "contain",
-                      imageRendering: "pixelated" }}
-                    onError={e => { e.target.style.display = "none"; e.target.nextSibling.style.display = "flex" }} />
-                  <div style={{ display: "none", width: "100%", height: "100%",
-                    alignItems: "center", justifyContent: "center",
-                    fontSize: 18, color: earned ? "#fff" : C.dim }}>★</div>
-                </div>
-                {isCurr && !earned && (
-                  <div style={{ position: "absolute", bottom: -2,
-                    width: 6, height: 6, borderRadius: "50%",
-                    background: C.p1, boxShadow: `0 0 6px ${C.p1}` }} />
+                style={{ background: "none", border: "none", cursor: "pointer", padding: "2px 1px",
+                  display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
+                  position: "relative", opacity: done ? 1 : 0.45,
+                  transition: "opacity .2s, transform .15s" }}
+                onMouseEnter={e => e.currentTarget.style.transform = "scale(1.12)"}
+                onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>
+
+                {isRival ? (
+                  // Rivalen: kleines ⚔-Symbol
+                  <div style={{
+                    width: 28, height: 28, borderRadius: 6,
+                    background: done ? `${C.warn}33` : C.lift,
+                    border: `2px solid ${done ? C.warn : isNext ? C.p1 + "88" : C.border}`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 13,
+                    boxShadow: isNext && !done ? `0 0 8px ${C.p1}44` : "none" }}>
+                    {done ? "✓" : "⚔"}
+                  </div>
+                ) : (
+                  // Orden: echtes Sprite
+                  <div style={{
+                    width: 40, height: 40, borderRadius: 8,
+                    border: `2px solid ${done ? "#ffffff44" : isNext ? C.p1 + "88" : C.border}`,
+                    background: done ? "transparent" : `${C.lift}cc`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    filter: done ? "none" : "grayscale(1) opacity(0.3)",
+                    boxShadow: done ? "0 0 12px #ffffff22, 0 2px 8px #0008"
+                      : isNext ? `0 0 8px ${C.p1}44` : "none",
+                    overflow: "hidden", transition: "all .2s" }}>
+                    <img src={GYM_CAPS[c.badgeIdx].sprite} alt=""
+                      style={{ width: 34, height: 34, objectFit: "contain", imageRendering: "pixelated" }}
+                      onError={e => { e.target.style.display = "none"; e.target.nextSibling.style.display = "block" }} />
+                    <span style={{ display: "none", fontSize: 18 }}>★</span>
+                  </div>
+                )}
+
+                {/* Punkt unter dem aktiven Eintrag */}
+                {isNext && !done && (
+                  <div style={{ width: 5, height: 5, borderRadius: "50%",
+                    background: C.p1, boxShadow: `0 0 5px ${C.p1}` }} />
                 )}
               </button>
             );
           })}
 
-          <div style={{ width: 1, height: 44, background: C.border, margin: "0 6px" }} />
+          <div style={{ width: 1, height: 40, background: C.border, margin: "0 8px" }} />
 
-          {/* Aktueller Cap – prägnant */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span className="mono" style={{ fontSize: 9, color: C.sub }}>NÄCHSTER CAP</span>
+          {/* Aktueller Cap – gross und prägnant */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            <div className="mono" style={{ fontSize: 8, color: C.sub, letterSpacing: 1 }}>
+              {currentCap.type === "rival" ? "RIVALE" : currentCap.type === "gym" ? "ARENA" : "ELITE"}
             </div>
             <div style={{ display: "flex", alignItems: "baseline", gap: 5 }}>
-              <span style={{ fontWeight: 900, fontSize: 22, color: C.p1, lineHeight: 1 }}>
+              <span style={{ fontWeight: 900, fontSize: 24, color: C.p1, lineHeight: 1 }}>
                 {capLevel}
               </span>
-              <span className="mono" style={{ fontSize: 10, color: C.sub }}>· {currentCap?.name}</span>
+              <span style={{ fontWeight: 900, fontSize: 18, color: C.sub, lineHeight: 1 }}>/</span>
+              <span style={{ fontWeight: 700, fontSize: 16, color: C.sub, lineHeight: 1 }}>
+                {capLevel - 2}
+              </span>
+            </div>
+            <div className="mono" style={{ fontSize: 9, color: C.sub }}>
+              {currentCap.name}
             </div>
           </div>
         </div>
@@ -1089,6 +1119,15 @@ export default function App() {
                         <span onClick={() => setEditName(k)}
                           style={{ fontWeight: 800, fontSize: 16, cursor: "text", color: acc }}>{st[k].name}</span>
                       )}
+                      {/* Todeszähler direkt neben Spielernamen */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 4,
+                        background: `${C.dead}18`, border: `1px solid ${C.dead}44`,
+                        borderRadius: 5, padding: "2px 8px" }}>
+                        <span style={{ fontSize: 11 }}>†</span>
+                        <span style={{ fontWeight: 900, fontSize: 14, color: C.dead, lineHeight: 1 }}>
+                          {st[k].totalDeaths || 0}
+                        </span>
+                      </div>
                       <div style={{ flex: 1 }} />
                       <span className="mono" style={{ fontSize: 11, color: C.sub,
                         background: C.lift, padding: "3px 10px", borderRadius: 5,
@@ -1166,10 +1205,7 @@ export default function App() {
                       background: `${C.bg}88`,
                       display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                       <span className="mono" style={{ fontSize: 10, color: C.p1 }}>📦 Box {boxOnly(k).length}</span>
-                      <span className="mono" style={{ fontSize: 10, color: C.dead }}>† Grab {grave(k).length}</span>
-                      <span className="mono" style={{ fontSize: 10, color: C.dead + "cc", fontWeight: 700 }}>
-                        Tode {st[k].totalDeaths || 0}
-                      </span>
+                      <span className="mono" style={{ fontSize: 10, color: C.dead }}>⚔ Grab {grave(k).length}</span>
                       <div style={{ flex: 1 }} />
                       <button onClick={() => setModal({ player: k, mode: "start" })} style={{
                         padding: "6px 14px", borderRadius: 6, cursor: "pointer",
@@ -1356,36 +1392,6 @@ export default function App() {
                 <div style={{ fontSize: 9, color: C.dim, marginTop: 8, lineHeight: 1.4 }}>
                   Run-Nummer manuell anpassen mit +/−. „Neuer Run" startet automatisch frisch.
                 </div>
-              </div>
-
-              {/* Tode insgesamt */}
-              <div className="mono" style={{ fontSize: 10, color: C.sub, marginBottom: 8 }}>
-                TODE INSGESAMT (RUN-ÜBERGREIFEND)
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 18 }}>
-                {SIDES.map(({ k, acc }) => (
-                  <div key={k} style={{ background: C.lift, border: `1px solid ${C.border}`,
-                    borderLeft: `3px solid ${acc}`, borderRadius: 8, padding: "10px 14px",
-                    display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ fontWeight: 700, fontSize: 13, color: acc, minWidth: 80 }}>{st[k].name}</span>
-                    <button onClick={() => adjustDeaths(k, -1)} style={{
-                      width: 26, height: 26, borderRadius: 6, cursor: "pointer",
-                      background: C.card, border: `1px solid ${C.border}`,
-                      color: C.sub, fontSize: 14, fontWeight: 700 }}>−</button>
-                    <span style={{ fontWeight: 900, fontSize: 22, color: C.dead, minWidth: 40, textAlign: "center" }}>
-                      {st[k].totalDeaths || 0}
-                    </span>
-                    <button onClick={() => adjustDeaths(k, 1)} style={{
-                      width: 26, height: 26, borderRadius: 6, cursor: "pointer",
-                      background: C.card, border: `1px solid ${C.border}`,
-                      color: C.sub, fontSize: 14, fontWeight: 700 }}>+</button>
-                    <div style={{ flex: 1 }} />
-                    <button onClick={() => resetDeaths(k)} style={{
-                      padding: "4px 10px", borderRadius: 6, cursor: "pointer",
-                      background: "transparent", border: `1px solid ${C.border}`,
-                      color: C.sub, fontSize: 10, fontWeight: 600 }}>reset</button>
-                  </div>
-                ))}
               </div>
 
               {/* Chronologische Cap-Liste */}

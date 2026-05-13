@@ -167,6 +167,7 @@ function firebaseToState(val) {
     customLocations: customLocArray,
     runNumber: val.runNumber || 1,
     runEndedShown: val.runEndedShown || false,
+    rivalsDone: val.rivalsDone || {},
   };
 }
 
@@ -196,5 +197,6 @@ function stateToFirebase(state) {
     customLocations: toObj(state.customLocations),
     runNumber: state.runNumber,
     runEndedShown: state.runEndedShown || false,
+    rivalsDone: state.rivalsDone || {},
   };
 }
