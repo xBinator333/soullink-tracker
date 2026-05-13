@@ -41,13 +41,33 @@ export const LOCATIONS = [
 
 export const GYM_CAPS = [
   {name:"Cheren",badge:"Basis-Orden",level:13},
-  {name:"Roxie",badge:"Gift-Orden",level:18},
-  {name:"Burgh",badge:"Insekten-Orden",level:24},
-  {name:"Elesa",badge:"Blitz-Orden",level:30},
-  {name:"Clay",badge:"Quake-Orden",level:33},
-  {name:"Skyla",badge:"Jet-Orden",level:39},
-  {name:"Drayden",badge:"Legende-Orden",level:48},
-  {name:"Marlon",badge:"Wellen-Orden",level:51},
+  {name:"Mica",badge:"Gift-Orden",level:18},
+  {name:"Artie",badge:"Insekten-Orden",level:24},
+  {name:"Kamilla",badge:"Blitz-Orden",level:30},
+  {name:"Turner",badge:"Quake-Orden",level:33},
+  {name:"Géraldine",badge:"Jet-Orden",level:39},
+  {name:"Lysander",badge:"Legende-Orden",level:48},
+  {name:"Benson",badge:"Wellen-Orden",level:51},
+];
+
+// Top 4 + Champ – nach Marlon ohne weitere Orden, einfach als zusätzliche Caps
+export const ELITE_CAPS = [
+  {name:"Anissa",level:56},
+  {name:"Astor",level:56},
+  {name:"Kattlea",level:57},
+  {name:"Eugen",level:58},
+  {name:"Lilia (Champ)",level:59},
+];
+
+// Rivalenkämpfe (zwischen / zusätzlich zu den Arena-Caps)
+// "after" = nach welchem Arena-Cap-Index (0-basiert) findet der Kampf statt
+// "after: -1" = ganz am Anfang, vor dem ersten Orden
+export const RIVAL_CAPS = [
+  {name:"Matisse (Dausing-Hof)",level:8,after:-1},
+  {name:"Matisse (Stratos-Kanalisation)",level:20,after:2}, // nach Burgh (Cap 24)
+  {name:"Matisse (Ondula)",level:41,after:5},               // nach Skyla (Cap 39)
+  {name:"Matisse (Tessera)",level:43,after:5},
+  {name:"Matisse (Siegesstraße)",level:57,after:7},         // nach Benson, vor Top 4
 ];
 
 export const BADGE_COLORS = ["#a8d8ea","#9b5de5","#00bbf9","#fee440","#8B4513","#0dcaf0","#9467bd","#0a9396"];

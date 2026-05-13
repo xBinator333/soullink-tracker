@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { ref, push, set } from "firebase/database";
 import { db } from "./firebase.js";
-import { LOCATIONS, GYM_CAPS, BADGE_COLORS, getEvoChain, C } from "./data.js";
+import { LOCATIONS, GYM_CAPS, ELITE_CAPS, RIVAL_CAPS, BADGE_COLORS, getEvoChain, C } from "./data.js";
 import { fetchGermanPokemonNames } from "./pokemon.js";
 import { useFirebaseSync } from "./useFirebaseSync.js";
 
@@ -89,7 +89,7 @@ function PokemonSearch({ pokemonList, value, onChange }) {
   );
 }
 
-function EncCard({ enc, player, linkStatus, cap, onStatus, onDelete }) {
+function EncCard({ enc, player, linkStatus, cap, onStatus, onDelete, onRevive }) {
   const acc = player === "p1" ? C.p1 : C.p2;
   const dead = enc.status === "dead";
   const gone = dead || enc.status === "missed" || enc.status === "burned"
@@ -132,8 +132,16 @@ function EncCard({ enc, player, linkStatus, cap, onStatus, onDelete }) {
             Überlevelt – muss in Box (Cap: {cap})
           </div>
         )}
-        <div style={{ display: "flex", gap: 3 }}>
-          {[
+        <div style={{ display: "flex", gap: 3, flexWrap: "wrap" }}>
+          {gone && onRevive && (
+            <button onClick={onRevive} style={{
+              fontFamily: "'Exo 2',sans-serif", fontWeight: 700, fontSize: 9,
+              padding: "2px 8px", borderRadius: 4, cursor: "pointer",
+              border: `1px solid ${C.ok}66`,
+              background: `${C.ok}18`,
+              color: C.ok }}>↺ Zurückholen</button>
+          )}
+          {!gone && [
             { k: "team", l: "Team", c: C.ok },
             { k: "box", l: "Box", c: C.p1 },
             { k: "dead", l: "Gefallen", c: C.dead },
@@ -162,6 +170,137 @@ function EncCard({ enc, player, linkStatus, cap, onStatus, onDelete }) {
         cursor: "pointer", color: C.dim, fontSize: 16, opacity: .3, lineHeight: 1 }}
         onMouseEnter={e => e.currentTarget.style.opacity = 1}
         onMouseLeave={e => e.currentTarget.style.opacity = .3}>×</button>
+    </div>
+  );
+}
+
+// Grosse Team-Karte für den Tracker – prominenter Sprite, später aufklappbar für Details
+function TeamCard({ enc, player, linkStatus, cap, onStatus, onDelete, partnerEnc }) {
+  const [expanded, setExpanded] = useState(false);
+  const acc = player === "p1" ? C.p1 : C.p2;
+  const isOver = enc.level && cap && enc.level > cap;
+  const linked = linkStatus === "linked";
+
+  return (
+    <div className="fade" style={{
+      background: isOver ? `${C.warn}08` : `linear-gradient(135deg, ${C.card} 0%, ${acc}06 100%)`,
+      border: `1px solid ${isOver ? C.warn + "44" : acc + "33"}`,
+      borderRadius: 12,
+      padding: 12,
+      position: "relative",
+      transition: "all .2s",
+      cursor: "pointer",
+      boxShadow: linked ? `0 0 0 1px ${C.link}22, 0 4px 16px #0006` : "0 4px 16px #0006",
+    }}
+      onClick={() => setExpanded(!expanded)}
+      onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
+      onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}>
+
+      {/* Soul-Link Indikator oben rechts */}
+      {linkStatus && (
+        <div style={{ position: "absolute", top: 6, right: 6,
+          display: "flex", alignItems: "center", gap: 4,
+          background: linked ? `${C.link}22` : `${C.warn}22`,
+          border: `1px solid ${linked ? C.link : C.warn}55`,
+          borderRadius: 5, padding: "2px 7px",
+          zIndex: 2 }}>
+          <span style={{ fontSize: 11, color: linked ? C.link : C.warn,
+            animation: linked ? "pulse 2.5s ease infinite" : "none" }}>⬡</span>
+          <span className="mono" style={{ fontSize: 8, color: linked ? C.link : C.warn, fontWeight: 700 }}>
+            {linked ? "LINK" : "OFFEN"}
+          </span>
+        </div>
+      )}
+
+      {/* Hauptbereich: Grosser Sprite + Infos */}
+      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        <div style={{
+          background: `radial-gradient(circle, ${acc}14 0%, transparent 70%)`,
+          padding: 4, borderRadius: 12, flexShrink: 0 }}>
+          <Sprite slug={enc.slug} size={84} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontWeight: 800, fontSize: 17, color: C.text,
+            whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+            marginBottom: 2 }}>
+            {enc.nickname || enc.name || "Unbekannt"}
+          </div>
+          {enc.nickname && enc.name && (
+            <div className="mono" style={{ fontSize: 10, color: C.sub, marginBottom: 4 }}>
+              {enc.name}
+            </div>
+          )}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {enc.level && (
+              <span className="mono" style={{ fontSize: 13, fontWeight: 700,
+                color: isOver ? C.warn : enc.level === cap ? C.gold : acc }}>
+                Lv {enc.level}{isOver ? " ⚠" : ""}
+              </span>
+            )}
+            <span className="mono" style={{ fontSize: 9, color: C.dim,
+              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {enc.locationType === "static" ? "⭐ " : enc.locationType === "gift" ? "🎁 " : ""}
+              {enc.route}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {isOver && (
+        <div style={{ fontSize: 10, color: C.warn, marginTop: 8,
+          background: `${C.warn}15`, borderRadius: 4, padding: "3px 8px" }}>
+          Überlevelt – muss in Box (Cap: {cap})
+        </div>
+      )}
+
+      {/* Aufklappbarer Detailbereich + Aktionen */}
+      {expanded && (
+        <div className="fade" style={{ marginTop: 10, paddingTop: 10,
+          borderTop: `1px solid ${C.border}` }}
+          onClick={e => e.stopPropagation()}>
+          {linked && partnerEnc && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8,
+              padding: 8, background: `${C.link}0a`, borderRadius: 7,
+              border: `1px solid ${C.link}33`, marginBottom: 10 }}>
+              <Sprite slug={partnerEnc.slug} size={36} dead={partnerEnc.status === "dead"} />
+              <div style={{ minWidth: 0 }}>
+                <div className="mono" style={{ fontSize: 9, color: C.link, marginBottom: 2 }}>SOUL-LINK</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.text,
+                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {partnerEnc.nickname || partnerEnc.name || "Unbekannt"}
+                </div>
+              </div>
+            </div>
+          )}
+          <div style={{ fontSize: 10, color: C.dim, marginBottom: 10, fontStyle: "italic" }}>
+            Detailinfos (Attacken, Stats) folgen sobald Lua-Anbindung aktiv ist
+          </div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <button onClick={() => onStatus("box")} style={{
+              fontFamily: "'Exo 2',sans-serif", fontWeight: 600, fontSize: 10,
+              padding: "4px 10px", borderRadius: 5, cursor: "pointer",
+              border: `1px solid ${C.p1}55`, background: `${C.p1}18`, color: C.p1 }}>
+              → Box
+            </button>
+            <button onClick={() => onStatus("dead")} style={{
+              fontFamily: "'Exo 2',sans-serif", fontWeight: 600, fontSize: 10,
+              padding: "4px 10px", borderRadius: 5, cursor: "pointer",
+              border: `1px solid ${C.dead}55`, background: `${C.dead}18`, color: C.dead }}>
+              † Gefallen
+            </button>
+            <div style={{ flex: 1 }} />
+            <button onClick={() => {
+              if (window.confirm(`„${enc.nickname || enc.name}" wirklich entfernen?`))
+                onDelete();
+            }} style={{
+              fontFamily: "'Exo 2',sans-serif", fontSize: 10,
+              padding: "4px 10px", borderRadius: 5, cursor: "pointer",
+              border: `1px solid ${C.border}`, background: "transparent", color: C.sub }}>
+              Entfernen
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -496,6 +635,8 @@ export default function App() {
   const { state: syncState, connected, authState, playerKey, createRoom, login, writeState, pushEncounter } = useFirebaseSync();
 
   const [tab, setTab] = useState("tracker");
+  // Falls noch alter "links"-Tab aktiv ist (z.B. nach Update), zurück auf tracker
+  useEffect(() => { if (tab === "links") setTab("tracker"); }, [tab]);
   const [modal, setModal] = useState(null);
   const [editName, setEditName] = useState(null);
   const [pokemonList, setPokemonList] = useState([]);
@@ -574,6 +715,11 @@ export default function App() {
 
   const allEnc = [...st.p1.encounters, ...st.p2.encounters];
   const badgeCount = st.badges.filter(Boolean).length;
+
+  // Vollständige Cap-Liste in chronologischer Reihenfolge:
+  // Arena 1-8 (mit Orden) → Top 4 (4 Mitglieder) → Champ
+  // Rivalenkämpfe werden in der Stats/Cap-Anzeige separat aufgelistet
+  // Aktiver Cap = höchster Arena-Cap (basierend auf Orden) + ggf. Top4/Champ wenn manuell markiert
   const currentCap = GYM_CAPS[Math.min(badgeCount, GYM_CAPS.length - 1)];
   const capLevel = currentCap?.level || 13;
 
@@ -613,14 +759,15 @@ export default function App() {
   }
 
   // Encounter abschliessen
+  // WICHTIG: Gefangene Pokémon gehen IMMER in die Box. Der Spieler entscheidet
+  // manuell welche 6 ins Team gehören.
   function finishEnc(pk, encId, data) {
     const ok = pk === "p1" ? "p2" : "p1";
     const enc = st[pk].encounters.find(e => e.id === encId);
     if (!enc) return;
 
-    const teamFull = st[pk].encounters.filter(e => e.status === "team").length >= 6;
-    const finalStatus = data.outcome === "caught" ? (teamFull ? "box" : "team") : data.outcome;
-    const wasNotCaught = notCaughtStatuses().includes(finalStatus);
+    // Gefangen → immer in die Box, K.O./Fled → entsprechender Grab-Status
+    const finalStatus = data.outcome === "caught" ? "box" : data.outcome;
 
     const updatedEnc = {
       ...enc,
@@ -632,7 +779,7 @@ export default function App() {
       status: finalStatus,
     };
 
-    // Partner suchen
+    // Partner suchen für Soul-Link Erstellung (intern, auch wenn Tab weg ist)
     const partner = st[ok].encounters.find(e =>
       e.route === enc.route && e.status !== "pending" &&
       !st.links.find(l => l.p1Id === e.id || l.p2Id === e.id)
@@ -648,21 +795,9 @@ export default function App() {
       links: newLink ? [...st.links, { ...newLink, id: `link_${Date.now()}_${Math.random().toString(36).slice(2, 8)}` }] : st.links,
     };
 
-    // K.O. zählt als Tod
+    // K.O. zählt als Tod für die Person die ihn meldet
     if (finalStatus === "ko") {
       ns[pk] = { ...ns[pk], totalDeaths: (ns[pk].totalDeaths || 0) + 1 };
-    }
-
-    // Soul-Link-Effekte
-    if (partner) {
-      if (wasNotCaught && (partner.status === "team" || partner.status === "box")) {
-        ns[ok] = { ...ns[ok],
-          encounters: ns[ok].encounters.map(e => e.id === partner.id ? { ...e, status: "burned" } : e) };
-      }
-      if ((finalStatus === "team" || finalStatus === "box") && notCaughtStatuses().includes(partner.status)) {
-        ns[pk] = { ...ns[pk],
-          encounters: ns[pk].encounters.map(e => e.id === encId ? { ...e, status: "burned" } : e) };
-      }
     }
 
     writeState(ns);
@@ -693,27 +828,37 @@ export default function App() {
     const wasNotDead = enc && enc.status !== "dead";
     let ns = { ...st, [pk]: { ...st[pk],
       encounters: st[pk].encounters.map(e => e.id === encId ? { ...e, status } : e) } };
+
+    // Todescounter erhöhen NUR bei dem Spieler der das Pokémon auf "Gefallen" setzt
     if (status === "dead" && wasNotDead) {
       ns[pk] = { ...ns[pk], totalDeaths: (ns[pk].totalDeaths || 0) + 1 };
     }
+
+    // Soul-Link-Kaskade: Partner geht IN DIE BOX (nicht stirbt automatisch).
+    // Der Spieler entscheidet selbst ob/wann er das Partner-Pokémon als gefallen markiert.
+    // Wird nur ausgeführt wenn die Soul-Links Tab/Logik noch aktiv ist (intern weiterhin geführt).
     const link = st.links.find(l => (pk === "p1" ? l.p1Id : l.p2Id) === encId);
     if (link) {
       const pid = pk === "p1" ? link.p2Id : link.p1Id;
       const partnerEnc = st[ok].encounters.find(e => e.id === pid);
-      if (status === "dead" && partnerEnc && partnerEnc.status !== "dead") {
+      // Bei Tod → Partner geht in die Box, aber zählt NICHT als Tod (das macht der andere Spieler manuell)
+      if (status === "dead" && partnerEnc && partnerEnc.status === "team") {
         ns[ok] = { ...ns[ok],
-          encounters: ns[ok].encounters.map(e => e.id === pid ? { ...e, status: "dead" } : e),
-          totalDeaths: (ns[ok].totalDeaths || 0) + 1 };
-      } else if (status === "box") {
-        ns[ok] = { ...ns[ok], encounters: ns[ok].encounters.map(e =>
-          e.id === pid && e.status === "team" ? { ...e, status: "box" } : e) };
-      } else if (status === "team") {
-        const partnerTeamSize = ns[ok].encounters.filter(e => e.status === "team").length;
-        if (partnerTeamSize < 6) {
-          ns[ok] = { ...ns[ok], encounters: ns[ok].encounters.map(e =>
-            e.id === pid && e.status === "box" ? { ...e, status: "team" } : e) };
-        }
+          encounters: ns[ok].encounters.map(e => e.id === pid ? { ...e, status: "box" } : e) };
       }
+    }
+    writeState(ns);
+  }
+
+  // Gefallenes/Verlorenes Pokémon zurückholen (in die Box) – korrigiert auch den Todescounter
+  function reviveEnc(pk, encId) {
+    const enc = st[pk].encounters.find(e => e.id === encId);
+    if (!enc) return;
+    const wasDead = enc.status === "dead" || enc.status === "ko";
+    let ns = { ...st, [pk]: { ...st[pk],
+      encounters: st[pk].encounters.map(e => e.id === encId ? { ...e, status: "box" } : e) } };
+    if (wasDead) {
+      ns[pk] = { ...ns[pk], totalDeaths: Math.max(0, (ns[pk].totalDeaths || 0) - 1) };
     }
     writeState(ns);
   }
@@ -789,7 +934,7 @@ export default function App() {
             </span>
             <span className="mono" style={{ fontSize: 9, color: C.dim, marginLeft: 6 }}>Schwarz 2</span>
           </div>
-          {[{ k: "tracker", l: "Tracker" }, { k: "box", l: "Box / Grab" }, { k: "links", l: "Soul Links" }].map(t => (
+          {[{ k: "tracker", l: "Team" }, { k: "box", l: "Box / Grab" }].map(t => (
             <button key={t.k} onClick={() => setTab(t.k)} style={{
               background: "none", border: "none", cursor: "pointer",
               padding: "0 12px", height: "100%", fontWeight: 600, fontSize: 12,
@@ -875,30 +1020,35 @@ export default function App() {
               {SIDES.map(({ k, acc }) => {
                 const team = teamOnly(k);
                 const pending = st[k].encounters.filter(e => e.status === "pending");
+                const ok = k === "p1" ? "p2" : "p1";
                 return (
                   <div key={k} style={{ background: C.panel, border: `1px solid ${C.border}`,
-                    borderTop: `2px solid ${acc}`, borderRadius: 10, overflow: "hidden" }}>
-                    <div style={{ padding: "10px 14px", borderBottom: `1px solid ${C.border}`,
+                    borderTop: `2px solid ${acc}`, borderRadius: 12, overflow: "hidden" }}>
+                    {/* Header */}
+                    <div style={{ padding: "12px 16px", borderBottom: `1px solid ${C.border}`,
                       display: "flex", alignItems: "center", gap: 8 }}>
-                      <div style={{ width: 7, height: 7, borderRadius: "50%", background: acc, boxShadow: `0 0 6px ${acc}` }} />
+                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: acc, boxShadow: `0 0 8px ${acc}` }} />
                       {editName === k ? (
                         <input autoFocus defaultValue={st[k].name}
-                          style={{ fontSize: 14, fontWeight: 700, padding: "2px 8px", width: 160 }}
+                          style={{ fontSize: 15, fontWeight: 700, padding: "2px 8px", width: 160 }}
                           onBlur={e => { writeState({ ...st, [k]: { ...st[k], name: e.target.value || st[k].name } }); setEditName(null) }}
                           onKeyDown={e => e.key === "Enter" && e.target.blur()} />
                       ) : (
                         <span onClick={() => setEditName(k)}
-                          style={{ fontWeight: 700, fontSize: 14, cursor: "text" }}>{st[k].name}</span>
+                          style={{ fontWeight: 800, fontSize: 16, cursor: "text", color: acc }}>{st[k].name}</span>
                       )}
                       <div style={{ flex: 1 }} />
-                      <span className="mono" style={{ fontSize: 11, color: C.sub }}>
-                        Team {team.length}/6
+                      <span className="mono" style={{ fontSize: 11, color: C.sub,
+                        background: C.lift, padding: "3px 10px", borderRadius: 5,
+                        border: `1px solid ${C.border}` }}>
+                        TEAM {team.length}/6
                       </span>
                     </div>
 
+                    {/* Pending Encounters */}
                     {pending.length > 0 && (
                       <div style={{ background: `${C.warn}0a`, borderBottom: `1px solid ${C.warn}33`,
-                        padding: "8px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
+                        padding: "10px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
                         <div className="mono" style={{ fontSize: 9, color: C.warn, letterSpacing: 1 }}>
                           OFFENE ENCOUNTER · {pending.length}
                         </div>
@@ -935,32 +1085,46 @@ export default function App() {
                       </div>
                     )}
 
-                    <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 5, minHeight: 80 }}>
+                    {/* Team-Bereich: grosse Karten */}
+                    <div style={{ padding: 12, display: "flex", flexDirection: "column", gap: 8, minHeight: 120 }}>
                       {team.length === 0 ? (
-                        <div style={{ border: `1px dashed ${C.border}`, borderRadius: 8,
-                          padding: "18px 0", textAlign: "center", fontSize: 12, color: C.dim }}>
-                          Noch keine Pokémon im Team
+                        <div style={{ border: `1px dashed ${C.border}`, borderRadius: 10,
+                          padding: "32px 0", textAlign: "center", fontSize: 12, color: C.dim }}>
+                          Noch keine Pokémon im Team<br />
+                          <span className="mono" style={{ fontSize: 10, color: C.dim }}>
+                            Encounter starten und gefangene Pokémon aus der Box ins Team setzen
+                          </span>
                         </div>
-                      ) : team.map(enc => (
-                        <EncCard key={enc.id} enc={enc} player={k}
-                          linkStatus={getLinkStatus(k, enc)} cap={capLevel}
-                          onStatus={s => setStatus(k, enc.id, s)}
-                          onDelete={() => delEnc(k, enc.id)} />
-                      ))}
+                      ) : team.map(enc => {
+                        const linkInfo = st.links.find(l => (k === "p1" ? l.p1Id : l.p2Id) === enc.id);
+                        const partnerId = linkInfo ? (k === "p1" ? linkInfo.p2Id : linkInfo.p1Id) : null;
+                        const partnerEnc = partnerId ? st[ok].encounters.find(e => e.id === partnerId) : null;
+                        return (
+                          <TeamCard key={enc.id} enc={enc} player={k}
+                            linkStatus={getLinkStatus(k, enc)} cap={capLevel}
+                            partnerEnc={partnerEnc}
+                            onStatus={s => setStatus(k, enc.id, s)}
+                            onDelete={() => delEnc(k, enc.id)} />
+                        );
+                      })}
                     </div>
-                    <div style={{ padding: "7px 14px", borderTop: `1px solid ${C.border}`,
-                      display: "flex", alignItems: "center", gap: 12 }}>
-                      <span className="mono" style={{ fontSize: 10, color: C.ok }}>Team {team.length}</span>
-                      <span className="mono" style={{ fontSize: 10, color: C.p1 }}>Box {boxOnly(k).length}</span>
-                      <span className="mono" style={{ fontSize: 10, color: C.dead }}>Grab {grave(k).length}</span>
-                      <span className="mono" style={{ fontSize: 10, color: C.dead + "aa" }}>† {st[k].totalDeaths || 0}</span>
+
+                    {/* Footer mit Zählern + Encounter Button */}
+                    <div style={{ padding: "9px 14px", borderTop: `1px solid ${C.border}`,
+                      background: `${C.bg}88`,
+                      display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                      <span className="mono" style={{ fontSize: 10, color: C.p1 }}>📦 Box {boxOnly(k).length}</span>
+                      <span className="mono" style={{ fontSize: 10, color: C.dead }}>† Grab {grave(k).length}</span>
+                      <span className="mono" style={{ fontSize: 10, color: C.dead + "cc", fontWeight: 700 }}>
+                        Tode {st[k].totalDeaths || 0}
+                      </span>
                       <div style={{ flex: 1 }} />
                       <button onClick={() => setModal({ player: k, mode: "start" })} style={{
-                        padding: "4px 12px", borderRadius: 6, cursor: "pointer",
-                        background: `${acc}18`, border: `1px solid ${acc}44`,
+                        padding: "6px 14px", borderRadius: 6, cursor: "pointer",
+                        background: `${acc}22`, border: `1px solid ${acc}66`,
                         color: acc, fontWeight: 700, fontSize: 11 }}
-                        onMouseEnter={e => e.currentTarget.style.background = `${acc}28`}
-                        onMouseLeave={e => e.currentTarget.style.background = `${acc}18`}>
+                        onMouseEnter={e => e.currentTarget.style.background = `${acc}33`}
+                        onMouseLeave={e => e.currentTarget.style.background = `${acc}22`}>
                         + Encounter
                       </button>
                     </div>
@@ -990,7 +1154,8 @@ export default function App() {
                           <EncCard key={enc.id} enc={enc} player={k}
                             linkStatus={getLinkStatus(k, enc)} cap={capLevel}
                             onStatus={s => setStatus(k, enc.id, s)}
-                            onDelete={() => delEnc(k, enc.id)} />
+                            onDelete={() => delEnc(k, enc.id)}
+                            onRevive={() => reviveEnc(k, enc.id)} />
                         ))}
                       </div>
                     </div>
@@ -1022,10 +1187,10 @@ export default function App() {
                             <div key={enc.id} style={{ display: "flex", alignItems: "center", gap: 8,
                               background: C.card, border: `1px solid ${C.border}`,
                               borderLeft: `3px solid ${sc}`,
-                              borderRadius: 7, padding: "7px 10px", opacity: .65 }}>
+                              borderRadius: 7, padding: "7px 10px" }}>
                               <Sprite slug={enc.slug} size={36} dead />
                               <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontWeight: 700, fontSize: 12,
+                                <div style={{ fontWeight: 700, fontSize: 12, color: C.sub,
                                   whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                                   {enc.nickname || enc.name || "Unbekannt"}
                                 </div>
@@ -1033,6 +1198,13 @@ export default function App() {
                               </div>
                               <span className="mono" style={{ fontSize: 9, color: sc, flexShrink: 0 }}>{sl}</span>
                               {enc.level && <span className="mono" style={{ fontSize: 9, color: C.dim, flexShrink: 0 }}>Lv {enc.level}</span>}
+                              <button onClick={() => {
+                                if (window.confirm(`„${enc.nickname || enc.name}" aus dem Grab zurückholen? Geht in die Box und der Todescounter wird korrigiert.`))
+                                  reviveEnc(k, enc.id);
+                              }} title="Zurückholen"
+                                style={{ padding: "3px 8px", borderRadius: 5, cursor: "pointer",
+                                  background: `${C.ok}18`, border: `1px solid ${C.ok}55`,
+                                  color: C.ok, fontSize: 10, fontWeight: 700, flexShrink: 0 }}>↺</button>
                             </div>
                           );
                         })}
@@ -1044,86 +1216,7 @@ export default function App() {
             </div>
           )}
 
-          {tab === "links" && (
-            <div>
-              <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 10, padding: 14, marginBottom: 16 }}>
-                <div className="mono" style={{ fontSize: 10, color: C.sub, marginBottom: 12 }}>AKTIVE TEAMS</div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                  {SIDES.map(({ k, acc }) => (
-                    <div key={k}>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: acc, marginBottom: 8 }}>{st[k].name}</div>
-                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                        {teamOnly(k).length === 0
-                          ? <span className="mono" style={{ fontSize: 10, color: C.dim }}>Leer</span>
-                          : teamOnly(k).map(enc => (
-                            <div key={enc.id} title={enc.nickname || enc.name} style={{
-                              background: C.lift, borderRadius: 6, padding: 5, border: `1px solid ${C.border}`,
-                              display: "flex", flexDirection: "column", alignItems: "center" }}>
-                              <Sprite slug={enc.slug} size={40} />
-                              <div className="mono" style={{ fontSize: 8, color: C.sub, textAlign: "center", marginTop: 2, maxWidth: 60,
-                                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                                {enc.nickname || enc.name || "?"}
-                              </div>
-                            </div>
-                          ))
-                        }
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="mono" style={{ fontSize: 10, color: C.sub, marginBottom: 10 }}>
-                SOUL-LINK PAARE · {st.links.length}
-              </div>
-              {st.links.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "40px 0", color: C.dim, fontSize: 13 }}>
-                  Noch keine Links — gleiche Route bei beiden Spielern eintragen
-                </div>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {st.links.map((link, i) => {
-                    const e1 = st.p1.encounters.find(e => e.id === link.p1Id);
-                    const e2 = st.p2.encounters.find(e => e.id === link.p2Id);
-                    if (!e1 || !e2) return null;
-                    const bothDead = e1.status === "dead" && e2.status === "dead";
-                    return (
-                      <div key={link.id || i} className="fade" style={{
-                        display: "grid", gridTemplateColumns: "1fr 26px 1fr",
-                        alignItems: "center", gap: 10,
-                        background: bothDead ? `${C.dead}08` : C.panel,
-                        border: `1px solid ${bothDead ? C.dead + "33" : C.border}`,
-                        borderRadius: 8, padding: "10px 14px", opacity: bothDead ? .45 : 1 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <Sprite slug={e1.slug} size={40} dead={e1.status === "dead"} />
-                          <div>
-                            <div style={{ fontWeight: 700, fontSize: 13,
-                              color: e1.status === "dead" ? C.dim : C.p1 }}>
-                              {e1.nickname || e1.name || "Unbekannt"}
-                            </div>
-                            <div className="mono" style={{ fontSize: 10, color: C.sub }}>{st.p1.name}</div>
-                            <div className="mono" style={{ fontSize: 9, color: C.dim }}>{e1.route}</div>
-                          </div>
-                        </div>
-                        <div style={{ textAlign: "center", color: bothDead ? C.dead : C.link, fontSize: 16,
-                          animation: bothDead ? "none" : "pulse 3s ease infinite" }}>⬡</div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexDirection: "row-reverse" }}>
-                          <Sprite slug={e2.slug} size={40} dead={e2.status === "dead"} />
-                          <div style={{ textAlign: "right" }}>
-                            <div style={{ fontWeight: 700, fontSize: 13,
-                              color: e2.status === "dead" ? C.dim : C.p2 }}>
-                              {e2.nickname || e2.name || "Unbekannt"}
-                            </div>
-                            <div className="mono" style={{ fontSize: 10, color: C.sub }}>{st.p2.name}</div>
-                            <div className="mono" style={{ fontSize: 9, color: C.dim }}>{e2.route}</div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
+          {/* Soul-Links Tab entfernt – Links werden intern weiterhin geführt für die Anzeige in den TeamCards */}
         </main>
 
         {modal && (() => {
@@ -1166,18 +1259,36 @@ export default function App() {
             onClick={() => setShowStats(false)}>
             <div onClick={e => e.stopPropagation()} style={{
               background: C.panel, border: `1px solid ${C.border}`,
-              borderRadius: 14, padding: 24, width: 460, maxWidth: "100%",
+              borderRadius: 14, padding: 24, width: 520, maxWidth: "100%",
+              maxHeight: "90vh", overflowY: "auto",
               boxShadow: "0 16px 48px #000c" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
                 <span style={{ fontWeight: 900, fontSize: 16 }}>Statistiken & Run</span>
                 <button onClick={() => setShowStats(false)} style={{ marginLeft: "auto",
                   background: "none", border: "none", cursor: "pointer", color: C.dim, fontSize: 22, lineHeight: 1 }}>×</button>
               </div>
+
+              {/* Run Counter mit manueller Korrektur */}
               <div style={{ background: C.lift, border: `1px solid ${C.border}`, borderRadius: 8, padding: 14, marginBottom: 14 }}>
-                <div className="mono" style={{ fontSize: 10, color: C.sub, marginBottom: 6 }}>AKTUELLER RUN</div>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontWeight: 900, fontSize: 24, color: C.link }}>#{st.runNumber}</span>
-                  <span className="mono" style={{ fontSize: 11, color: C.sub }}>
+                <div className="mono" style={{ fontSize: 10, color: C.sub, marginBottom: 8 }}>AKTUELLER RUN</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <button onClick={() => {
+                    if ((st.runNumber || 1) > 1)
+                      writeState({ ...st, runNumber: st.runNumber - 1 });
+                  }} disabled={(st.runNumber || 1) <= 1}
+                    style={{ width: 28, height: 28, borderRadius: 6,
+                      cursor: (st.runNumber || 1) > 1 ? "pointer" : "not-allowed",
+                      background: C.card, border: `1px solid ${C.border}`,
+                      color: C.sub, fontSize: 14, fontWeight: 700,
+                      opacity: (st.runNumber || 1) > 1 ? 1 : .3 }}>−</button>
+                  <span style={{ fontWeight: 900, fontSize: 24, color: C.link, minWidth: 60, textAlign: "center" }}>
+                    #{st.runNumber}
+                  </span>
+                  <button onClick={() => writeState({ ...st, runNumber: (st.runNumber || 1) + 1 })}
+                    style={{ width: 28, height: 28, borderRadius: 6, cursor: "pointer",
+                      background: C.card, border: `1px solid ${C.border}`,
+                      color: C.sub, fontSize: 14, fontWeight: 700 }}>+</button>
+                  <span className="mono" style={{ fontSize: 11, color: C.sub, marginLeft: 6 }}>
                     {totalEnc} Encounter · {p1Alive + p2Alive} aktiv
                   </span>
                   <div style={{ flex: 1 }} />
@@ -1187,14 +1298,19 @@ export default function App() {
                   }} style={{ padding: "6px 12px", borderRadius: 7, cursor: "pointer",
                     background: `${C.warn}18`, border: `1px solid ${C.warn}55`,
                     color: C.warn, fontWeight: 600, fontSize: 11 }}>
-                    ↻ Neustart
+                    ↻ Neuer Run
                   </button>
                 </div>
+                <div style={{ fontSize: 9, color: C.dim, marginTop: 8, lineHeight: 1.4 }}>
+                  Run-Nummer manuell anpassen mit +/−. „Neuer Run" startet automatisch frisch.
+                </div>
               </div>
+
+              {/* Tode insgesamt */}
               <div className="mono" style={{ fontSize: 10, color: C.sub, marginBottom: 8 }}>
                 TODE INSGESAMT (RUN-ÜBERGREIFEND)
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 18 }}>
                 {SIDES.map(({ k, acc }) => (
                   <div key={k} style={{ background: C.lift, border: `1px solid ${C.border}`,
                     borderLeft: `3px solid ${acc}`, borderRadius: 8, padding: "10px 14px",
@@ -1219,8 +1335,70 @@ export default function App() {
                   </div>
                 ))}
               </div>
-              <div style={{ fontSize: 10, color: C.dim, marginTop: 12, lineHeight: 1.5 }}>
-                Der Tode-Zähler wird automatisch erhöht wenn ein Pokémon auf „Gefallen" gesetzt wird. Manuelle Korrektur über +/− möglich.
+
+              {/* Level-Cap Übersicht */}
+              <div className="mono" style={{ fontSize: 10, color: C.sub, marginBottom: 8 }}>
+                LEVEL CAPS – ARENEN
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 5, marginBottom: 14 }}>
+                {GYM_CAPS.map((c, i) => (
+                  <div key={i} style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    background: st.badges[i] ? `${BADGE_COLORS[i]}14` : C.lift,
+                    border: `1px solid ${st.badges[i] ? BADGE_COLORS[i] + "55" : C.border}`,
+                    borderRadius: 6, padding: "5px 9px" }}>
+                    <span style={{ fontSize: 11,
+                      color: st.badges[i] ? BADGE_COLORS[i] : C.sub }}>
+                      {st.badges[i] ? "★" : "○"}
+                    </span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: st.badges[i] ? C.text : C.sub }}>
+                      {c.name}
+                    </span>
+                    <span className="mono" style={{ marginLeft: "auto", fontSize: 10, color: C.dim }}>
+                      Lv {c.level}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mono" style={{ fontSize: 10, color: C.sub, marginBottom: 8 }}>
+                LEVEL CAPS – TOP 4 & CHAMP
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 14 }}>
+                {ELITE_CAPS.map((c, i) => (
+                  <div key={i} style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    background: C.lift, border: `1px solid ${C.border}`,
+                    borderRadius: 6, padding: "5px 10px" }}>
+                    <span style={{ fontSize: 11, color: C.gold }}>👑</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: C.text }}>
+                      {c.name}
+                    </span>
+                    <span className="mono" style={{ marginLeft: "auto", fontSize: 10, color: C.dim }}>
+                      Lv {c.level}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mono" style={{ fontSize: 10, color: C.sub, marginBottom: 8 }}>
+                RIVALENKÄMPFE
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                {RIVAL_CAPS.map((c, i) => (
+                  <div key={i} style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    background: C.lift, border: `1px solid ${C.border}`,
+                    borderRadius: 6, padding: "5px 10px" }}>
+                    <span style={{ fontSize: 11 }}>⚔</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: C.text }}>
+                      {c.name}
+                    </span>
+                    <span className="mono" style={{ marginLeft: "auto", fontSize: 10, color: C.dim }}>
+                      Lv {c.level}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
