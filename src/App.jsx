@@ -6,23 +6,27 @@ import { fetchGermanPokemonNames, calcCatchRate, catchRateColor } from "./pokemo
 import { useFirebaseSync } from "./useFirebaseSync.js";
 
 const CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@400;600;700;900&family=Share+Tech+Mono&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700;800;900&family=Share+Tech+Mono&display=swap');
   *{box-sizing:border-box;margin:0;padding:0}
-  html,body{background:${C.bg};color:${C.text};font-family:'Exo 2',sans-serif}
-  ::-webkit-scrollbar{width:3px;height:3px}
+  html,body{background:${C.bg};color:${C.text};font-family:'Exo 2',sans-serif;
+    -webkit-font-smoothing:antialiased;letter-spacing:-0.01em}
+  ::-webkit-scrollbar{width:6px;height:6px}
   ::-webkit-scrollbar-track{background:transparent}
-  ::-webkit-scrollbar-thumb{background:${C.border};border-radius:3px}
+  ::-webkit-scrollbar-thumb{background:${C.border};border-radius:6px}
+  ::-webkit-scrollbar-thumb:hover{background:${C.borderHi}}
   @keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
   @keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
   @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
-  @keyframes glow{0%,100%{box-shadow:0 0 0 3px ${C.p1}44,0 0 12px ${C.p1}55}50%{box-shadow:0 0 0 4px ${C.p1}88,0 0 22px ${C.p1}99}}
+  @keyframes glow{0%,100%{box-shadow:0 0 0 3px ${C.p1}33,0 0 14px ${C.p1}55,inset 0 1px 0 ${C.p1}33}50%{box-shadow:0 0 0 4px ${C.p1}66,0 0 24px ${C.p1}99,inset 0 1px 0 ${C.p1}55}}
+  @keyframes glowWarn{0%,100%{box-shadow:0 0 0 2px ${C.warn}22,0 0 10px ${C.warn}44}50%{box-shadow:0 0 0 3px ${C.warn}44,0 0 18px ${C.warn}77}}
   .fade{animation:fadeIn .18s ease forwards}
   .mono{font-family:'Share Tech Mono',monospace}
-  input{background:${C.lift};border:1px solid ${C.border};border-radius:7px;
-    padding:8px 11px;color:${C.text};font-family:'Exo 2',sans-serif;font-size:13px;
-    outline:none;transition:border-color .15s;width:100%}
-  input:focus{border-color:${C.p1}66}
+  input{background:${C.lift};border:1px solid ${C.border};border-radius:9px;
+    padding:9px 13px;color:${C.text};font-family:'Exo 2',sans-serif;font-size:14px;
+    outline:none;transition:border-color .15s, box-shadow .15s;width:100%}
+  input:focus{border-color:${C.p1}88;box-shadow:0 0 0 3px ${C.p1}22}
   input::placeholder{color:${C.dim}}
+  button{font-family:'Exo 2',sans-serif}
 `;
 
 // ============================================================
@@ -749,15 +753,14 @@ export default function App() {
   const allEnc = [...st.p1.encounters, ...st.p2.encounters];
   const badgeCount = st.badges.filter(Boolean).length;
   const rivalsDone = st.rivalsDone || {};
+  const elitesDone = st.elitesDone || {};
 
   // Aktiver Cap = nächster noch nicht erledigter Eintrag in ALL_CAPS
-  // Orden: erledigt wenn st.badges[badgeIdx] === true
-  // Rivalen: erledigt wenn rivalsDone[rivalKey] === true
-  // Elite/Champ: immer noch offen (kein Toggle, nur als Info)
   const nextCapIdx = ALL_CAPS.findIndex(c => {
     if (c.type === "gym") return !st.badges[c.badgeIdx];
     if (c.type === "rival") return !rivalsDone[c.rivalKey];
-    return true; // elite/champ immer als nächstes sobald alle Orden/Rivalen durch
+    if (c.type === "elite" || c.type === "champ") return !elitesDone[c.eliteIdx];
+    return false;
   });
   const currentCapEntry = nextCapIdx >= 0 ? ALL_CAPS[nextCapIdx] : ALL_CAPS[ALL_CAPS.length - 1];
   const capLevel = currentCapEntry.level;
@@ -920,17 +923,49 @@ export default function App() {
     writeState(ns);
   }
 
-  // Gefallenes/Verlorenes Pokémon zurückholen (in die Box) – korrigiert auch den Todescounter
+  // Gefallenes/Verlorenes Pokémon zurückholen – ins TEAM (und Partner mit)
+  // Falls Team voll: Box als Fallback, mit Hinweis
   function reviveEnc(pk, encId) {
     const enc = st[pk].encounters.find(e => e.id === encId);
     if (!enc) return;
     const wasDead = enc.status === "dead" || enc.status === "ko";
+    const ok = pk === "p1" ? "p2" : "p1";
+
+    // Team-Platz prüfen
+    const myTeamSize = st[pk].encounters.filter(e => e.status === "team").length;
+    const targetStatus = myTeamSize < 6 ? "team" : "box";
+
     let ns = { ...st, [pk]: { ...st[pk],
-      encounters: st[pk].encounters.map(e => e.id === encId ? { ...e, status: "box" } : e) } };
+      encounters: st[pk].encounters.map(e => e.id === encId ? { ...e, status: targetStatus } : e) } };
+
+    // Todescounter korrigieren
     if (wasDead) {
       ns[pk] = { ...ns[pk], totalDeaths: Math.max(0, (ns[pk].totalDeaths || 0) - 1) };
     }
+
+    // Soul-Link Partner mitnehmen
+    const link = st.links.find(l => (pk === "p1" ? l.p1Id : l.p2Id) === encId);
+    if (link) {
+      const pid = pk === "p1" ? link.p2Id : link.p1Id;
+      const partnerEnc = st[ok].encounters.find(e => e.id === pid);
+      if (partnerEnc) {
+        const partnerWasDead = partnerEnc.status === "dead" || partnerEnc.status === "ko";
+        const partnerTeamSize = ns[ok].encounters.filter(e => e.status === "team").length;
+        const partnerTarget = partnerTeamSize < 6 && targetStatus === "team" ? "team" : "box";
+
+        ns[ok] = { ...ns[ok],
+          encounters: ns[ok].encounters.map(e =>
+            e.id === pid ? { ...e, status: partnerTarget } : e
+          ),
+        };
+        // Partner-Counter wird NICHT korrigiert – beim Tod wurde er ja auch nicht erhöht
+      }
+    }
+
     writeState(ns);
+    if (targetStatus === "box") {
+      setTimeout(() => alert("Team war voll – Pokémon ist in der Box gelandet."), 100);
+    }
   }
 
   function delEnc(pk, encId) {
@@ -1042,91 +1077,110 @@ export default function App() {
           <span className="mono" style={{ fontSize: 10, color: C.sub }}>{routesDone} Orte</span>
         </header>
 
-        <div style={{ background: C.panel, borderBottom: `1px solid ${C.border}`,
-          padding: "10px 16px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <div style={{ background: `linear-gradient(180deg, ${C.panel} 0%, ${C.bg} 100%)`,
+          borderBottom: `1px solid ${C.border}`,
+          padding: "14px 20px", display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
 
-          {/* ORDEN – nur Gym-Einträge */}
-          <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-            {ALL_CAPS.filter(c => c.type === "gym").map((c, i) => {
-              const done = st.badges[c.badgeIdx];
+          {/* ORDEN (1-8) + Top 4 + Champ – alle als "Arena-Trophäen" in einer Reihe */}
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            {ALL_CAPS.filter(c => c.type === "gym" || c.type === "elite" || c.type === "champ").map((c, i) => {
+              const isGym = c.type === "gym";
+              const isChamp = c.type === "champ";
+              const done = isGym ? st.badges[c.badgeIdx] : elitesDone[c.eliteIdx];
               const isNext = currentCapEntry === c;
-              const isClickable = isNext && !done;
+              const isClickable = isNext || done; // aktiver klickbar + bereits erledigte zum Rückgängigmachen
+              const glowColor = isChamp ? C.gold : isGym ? GYM_CAPS[c.badgeIdx].color : ELITE_CAPS[c.eliteIdx].color;
+
               return (
                 <button key={i}
                   onClick={() => {
                     if (!isClickable) return;
-                    const b = [...st.badges]; b[c.badgeIdx] = true;
-                    writeState({ ...st, badges: b });
+                    if (isGym) {
+                      const b = [...st.badges]; b[c.badgeIdx] = !b[c.badgeIdx];
+                      writeState({ ...st, badges: b });
+                    } else {
+                      writeState({ ...st, elitesDone: { ...elitesDone, [c.eliteIdx]: !elitesDone[c.eliteIdx] } });
+                    }
                   }}
                   title={`${c.name} · Cap Lv ${c.level}`}
                   style={{ background: "none", border: "none",
                     cursor: isClickable ? "pointer" : "default",
-                    padding: 2, display: "flex", flexDirection: "column",
-                    alignItems: "center", gap: 0, position: "relative",
-                    transition: "transform .15s" }}
-                  onMouseEnter={e => { if (isClickable) e.currentTarget.style.transform = "scale(1.15)" }}
-                  onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>
+                    padding: 0, transition: "transform .15s" }}
+                  onMouseEnter={e => { if (isClickable) e.currentTarget.style.transform = "translateY(-2px)" }}
+                  onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}>
                   <div style={{
-                    width: 42, height: 42, borderRadius: 9,
+                    width: 48, height: 48, borderRadius: 12,
+                    background: done
+                      ? `linear-gradient(135deg, ${glowColor}22, ${glowColor}08)`
+                      : `${C.lift}88`,
+                    backdropFilter: "blur(12px)",
                     border: isNext && !done
-                      ? `2px solid ${C.p1}`
-                      : done ? `2px solid #ffffff33` : `2px solid ${C.border}`,
-                    background: done ? "transparent" : C.lift,
+                      ? `1.5px solid ${C.p1}`
+                      : done ? `1px solid ${glowColor}55` : `1px solid ${C.border}`,
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    filter: done ? "none" : "grayscale(1) opacity(0.25)",
+                    filter: done ? "none" : "grayscale(0.7) opacity(0.45)",
                     boxShadow: isNext && !done
-                      ? `0 0 0 3px ${C.p1}44, 0 0 16px ${C.p1}66`
-                      : done ? "0 0 10px #ffffff18, 0 2px 8px #0008" : "none",
-                    overflow: "hidden", transition: "all .2s",
+                      ? `0 0 0 3px ${C.p1}33, 0 0 20px ${C.p1}55, inset 0 1px 0 ${C.p1}33`
+                      : done ? `0 0 14px ${glowColor}33, 0 4px 12px #0008, inset 0 1px 0 #ffffff15`
+                      : "0 2px 6px #0006",
+                    overflow: "hidden",
+                    transition: "all .25s",
                     animation: isNext && !done ? "glow 2s ease infinite" : "none" }}>
-                    <img src={GYM_CAPS[c.badgeIdx].sprite} alt=""
-                      style={{ width: 36, height: 36, objectFit: "contain", imageRendering: "pixelated" }}
-                      onError={e => {
-                        e.target.style.display = "none";
-                        e.target.nextSibling.style.display = "block";
-                      }} />
-                    <span style={{ display: "none", fontSize: 20, color: done ? C.gold : C.dim }}>★</span>
+                    {isGym ? (
+                      <img src={c.sprite} alt=""
+                        style={{ width: 38, height: 38, objectFit: "contain", imageRendering: "pixelated" }} />
+                    ) : (
+                      <span style={{ fontSize: 22 }}>{ELITE_CAPS[c.eliteIdx].icon}</span>
+                    )}
                   </div>
                 </button>
               );
             })}
           </div>
 
-          <div style={{ width: 1, height: 40, background: C.border }} />
+          <div style={{ width: 1, height: 48, background: C.border }} />
 
-          {/* RIVALEN – kompakt nebeneinander */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            <div className="mono" style={{ fontSize: 8, color: C.sub, letterSpacing: 1 }}>MATISSE</div>
-            <div style={{ display: "flex", gap: 4 }}>
+          {/* RIVALEN – elegante Pill-Tags */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <div className="mono" style={{ fontSize: 10, color: C.sub, letterSpacing: 1.5, fontWeight: 600 }}>
+              MATISSE
+            </div>
+            <div style={{ display: "flex", gap: 5 }}>
               {ALL_CAPS.filter(c => c.type === "rival").map((c, i) => {
                 const done = rivalsDone[c.rivalKey];
                 const isNext = currentCapEntry === c;
-                const isClickable = isNext && !done;
-                const shortName = c.name.replace("Matisse (", "").replace(")", "");
+                const isClickable = isNext || done;
                 return (
                   <button key={i}
                     onClick={() => {
                       if (!isClickable) return;
-                      writeState({ ...st, rivalsDone: { ...rivalsDone, [c.rivalKey]: true } });
+                      writeState({ ...st, rivalsDone: { ...rivalsDone, [c.rivalKey]: !rivalsDone[c.rivalKey] } });
                     }}
                     title={`${c.name} · Cap Lv ${c.level}`}
                     style={{ background: "none", border: "none",
                       cursor: isClickable ? "pointer" : "default",
                       padding: 0, transition: "transform .15s" }}
-                    onMouseEnter={e => { if (isClickable) e.currentTarget.style.transform = "scale(1.12)" }}
-                    onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>
+                    onMouseEnter={e => { if (isClickable) e.currentTarget.style.transform = "translateY(-1px)" }}
+                    onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}>
                     <div style={{
-                      padding: "3px 7px", borderRadius: 5, fontSize: 9, fontWeight: 700,
-                      fontFamily: "'Share Tech Mono', monospace",
+                      padding: "5px 12px", borderRadius: 999,
+                      fontSize: 11, fontWeight: 600,
+                      background: done
+                        ? `linear-gradient(135deg, ${C.warn}33, ${C.warn}11)`
+                        : isNext && !done ? `${C.warn}14` : `${C.lift}88`,
+                      backdropFilter: "blur(8px)",
                       border: isNext && !done
                         ? `1.5px solid ${C.warn}`
-                        : done ? `1.5px solid ${C.warn}55` : `1.5px solid ${C.border}`,
-                      background: done ? `${C.warn}22` : isNext && !done ? `${C.warn}14` : C.lift,
+                        : done ? `1px solid ${C.warn}55` : `1px solid ${C.border}`,
                       color: done ? C.warn : isNext && !done ? C.warn : C.dim,
-                      boxShadow: isNext && !done ? `0 0 0 2px ${C.warn}33, 0 0 10px ${C.warn}55` : "none",
-                      transition: "all .2s",
-                      whiteSpace: "nowrap" }}>
-                      {done ? "✓ " : ""}{shortName}
+                      boxShadow: isNext && !done ? `0 0 0 2px ${C.warn}22, 0 0 12px ${C.warn}44`
+                        : done ? `0 2px 8px ${C.warn}22` : "none",
+                      transition: "all .25s",
+                      animation: isNext && !done ? "glowWarn 2s ease infinite" : "none",
+                      whiteSpace: "nowrap",
+                      display: "flex", alignItems: "center", gap: 4 }}>
+                      {done && <span style={{ fontSize: 10 }}>✓</span>}
+                      <span>Lv {c.level}</span>
                     </div>
                   </button>
                 );
@@ -1134,19 +1188,27 @@ export default function App() {
             </div>
           </div>
 
-          <div style={{ width: 1, height: 40, background: C.border }} />
+          <div style={{ width: 1, height: 48, background: C.border }} />
 
-          {/* Aktueller Cap – gross und klar */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-            <div className="mono" style={{ fontSize: 8, color: C.sub, letterSpacing: 1 }}>
-              {currentCap.type === "rival" ? "CAP · RIVALE" : currentCap.type === "gym" ? "CAP · ARENA" : "CAP · ELITE"}
+          {/* Aktueller Cap – elegant gross */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <div className="mono" style={{ fontSize: 10, color: C.sub, letterSpacing: 1.5, fontWeight: 600 }}>
+              {currentCap.type === "rival" ? "CAP · RIVALE"
+                : currentCap.type === "gym" ? "CAP · ARENA"
+                : currentCap.type === "champ" ? "CAP · CHAMP"
+                : "CAP · TOP 4"}
             </div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-              <span style={{ fontWeight: 900, fontSize: 26, color: C.p1, lineHeight: 1 }}>{capLevel}</span>
-              <span style={{ fontWeight: 700, fontSize: 14, color: C.dim, lineHeight: 1 }}>/</span>
-              <span style={{ fontWeight: 700, fontSize: 18, color: C.sub, lineHeight: 1 }}>{capLevel - 2}</span>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+              <span style={{ fontWeight: 800, fontSize: 32, color: C.text,
+                lineHeight: 1, letterSpacing: -1 }}>
+                {capLevel}
+              </span>
+              <span style={{ fontSize: 14, color: C.dim, fontWeight: 500 }}>/</span>
+              <span style={{ fontSize: 18, color: C.sub, fontWeight: 600 }}>
+                {capLevel - 2}
+              </span>
             </div>
-            <div className="mono" style={{ fontSize: 9, color: C.sub }}>{currentCap.name}</div>
+            <div style={{ fontSize: 11, color: C.sub, fontWeight: 500 }}>{currentCap.name}</div>
           </div>
         </div>
 
@@ -1158,35 +1220,43 @@ export default function App() {
                 const pending = st[k].encounters.filter(e => e.status === "pending");
                 const ok = k === "p1" ? "p2" : "p1";
                 return (
-                  <div key={k} style={{ background: C.panel, border: `1px solid ${C.border}`,
-                    borderTop: `2px solid ${acc}`, borderRadius: 12, overflow: "hidden" }}>
+                  <div key={k} style={{ background: `linear-gradient(180deg, ${C.panel} 0%, ${C.bg}cc 100%)`,
+                    border: `1px solid ${C.border}`,
+                    borderTop: `2px solid ${acc}`,
+                    borderRadius: 14, overflow: "hidden",
+                    boxShadow: `0 8px 24px #0006` }}>
                     {/* Header */}
-                    <div style={{ padding: "12px 16px", borderBottom: `1px solid ${C.border}`,
-                      display: "flex", alignItems: "center", gap: 8 }}>
-                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: acc, boxShadow: `0 0 8px ${acc}` }} />
+                    <div style={{ padding: "14px 18px", borderBottom: `1px solid ${C.border}`,
+                      display: "flex", alignItems: "center", gap: 10,
+                      background: `${acc}08`, backdropFilter: "blur(8px)" }}>
+                      <div style={{ width: 10, height: 10, borderRadius: "50%",
+                        background: acc, boxShadow: `0 0 12px ${acc}` }} />
                       {editName === k ? (
                         <input autoFocus defaultValue={st[k].name}
-                          style={{ fontSize: 15, fontWeight: 700, padding: "2px 8px", width: 160 }}
+                          style={{ fontSize: 16, fontWeight: 700, padding: "3px 10px", width: 170 }}
                           onBlur={e => { writeState({ ...st, [k]: { ...st[k], name: e.target.value || st[k].name } }); setEditName(null) }}
                           onKeyDown={e => e.key === "Enter" && e.target.blur()} />
                       ) : (
                         <span onClick={() => setEditName(k)}
-                          style={{ fontWeight: 800, fontSize: 16, cursor: "text", color: acc }}>{st[k].name}</span>
+                          style={{ fontWeight: 800, fontSize: 18, cursor: "text", color: acc,
+                            letterSpacing: -0.3 }}>{st[k].name}</span>
                       )}
-                      {/* Todeszähler direkt neben Spielernamen */}
-                      <div style={{ display: "flex", alignItems: "center", gap: 4,
-                        background: `${C.dead}18`, border: `1px solid ${C.dead}44`,
-                        borderRadius: 5, padding: "2px 8px" }}>
-                        <span style={{ fontSize: 11 }}>†</span>
-                        <span style={{ fontWeight: 900, fontSize: 14, color: C.dead, lineHeight: 1 }}>
+                      {/* Eleganter Todeszähler */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 6,
+                        background: `linear-gradient(135deg, ${C.dead}22, ${C.dead}08)`,
+                        border: `1px solid ${C.dead}33`,
+                        borderRadius: 999, padding: "3px 11px",
+                        boxShadow: `0 0 12px ${C.dead}15` }}>
+                        <span style={{ fontSize: 11, color: C.dead, opacity: 0.8 }}>†</span>
+                        <span style={{ fontWeight: 700, fontSize: 13, color: C.dead, lineHeight: 1 }}>
                           {st[k].totalDeaths || 0}
                         </span>
                       </div>
                       <div style={{ flex: 1 }} />
-                      <span className="mono" style={{ fontSize: 11, color: C.sub,
-                        background: C.lift, padding: "3px 10px", borderRadius: 5,
+                      <span style={{ fontSize: 12, color: C.sub, fontWeight: 600,
+                        background: C.lift, padding: "4px 12px", borderRadius: 999,
                         border: `1px solid ${C.border}` }}>
-                        TEAM {team.length}/6
+                        {team.length}/6
                       </span>
                     </div>
 
@@ -1455,11 +1525,16 @@ export default function App() {
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 {ALL_CAPS.map((c, i) => {
                   const isGym = c.type === "gym";
-                  const earned = isGym && st.badges[c.badgeIdx];
+                  const earned = isGym ? st.badges[c.badgeIdx]
+                    : c.type === "rival" ? rivalsDone[c.rivalKey]
+                    : elitesDone[c.eliteIdx];
                   const isChamp = c.type === "champ";
                   const isElite = c.type === "elite";
                   const isRival = c.type === "rival";
-                  const col = isChamp ? C.gold : isElite ? C.link : isRival ? C.warn : (isGym ? GYM_CAPS[c.badgeIdx].color : C.p1);
+                  const col = isChamp ? C.gold
+                    : isElite ? (ELITE_CAPS[c.eliteIdx]?.color || C.link)
+                    : isRival ? C.warn
+                    : (isGym ? GYM_CAPS[c.badgeIdx].color : C.p1);
                   return (
                     <div key={i} style={{
                       display: "flex", alignItems: "center", gap: 10,
@@ -1470,7 +1545,8 @@ export default function App() {
                       opacity: earned ? 1 : 0.7 }}>
                       {isGym ? (
                         <img src={GYM_CAPS[c.badgeIdx].sprite} alt=""
-                          style={{ width: 22, height: 22, objectFit: "contain" }} />
+                          style={{ width: 22, height: 22, objectFit: "contain",
+                            imageRendering: "pixelated" }} />
                       ) : (
                         <span style={{ fontSize: 14, width: 22, textAlign: "center" }}>{c.icon}</span>
                       )}

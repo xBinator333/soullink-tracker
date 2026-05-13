@@ -168,6 +168,7 @@ function firebaseToState(val) {
     runNumber: val.runNumber || 1,
     runEndedShown: val.runEndedShown || false,
     rivalsDone: val.rivalsDone || {},
+    elitesDone: val.elitesDone || {},
   };
 }
 
@@ -198,5 +199,6 @@ function stateToFirebase(state) {
     runNumber: state.runNumber,
     runEndedShown: state.runEndedShown || false,
     rivalsDone: state.rivalsDone || {},
+    elitesDone: state.elitesDone || {},
   };
 }

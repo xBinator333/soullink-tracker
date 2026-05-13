@@ -1,76 +1,113 @@
 export const LOCATIONS = [
-  {name:"Eventura City",type:"route"},{name:"Dausing",type:"route"},
-  {name:"Vapydro City",type:"route"},{name:"Stratos City",type:"route"},
-  {name:"Rayono City",type:"route"},{name:"Marea City",type:"route"},
-  {name:"Panaero City",type:"route"},{name:"Monsentiero",type:"route"},
-  {name:"Ondula",type:"route"},{name:"Tessera",type:"route"},
-  {name:"Twindrake City",type:"route"},{name:"Abidaya City",type:"route"},
-  {name:"Septerna City",type:"route"},{name:"Nevaio City",type:"route"},
-  {name:"Route 1",type:"route"},{name:"Route 2",type:"route"},{name:"Route 3",type:"route"},
-  {name:"Route 4",type:"route"},{name:"Route 5",type:"route"},{name:"Route 6",type:"route"},
-  {name:"Route 7",type:"route"},{name:"Route 8",type:"route"},{name:"Route 9",type:"route"},
-  {name:"Route 11",type:"route"},{name:"Route 12",type:"route"},{name:"Route 13",type:"route"},
-  {name:"Route 14",type:"route"},{name:"Route 15",type:"route"},{name:"Route 16",type:"route"},
-  {name:"Route 17",type:"route"},{name:"Route 18",type:"route"},{name:"Route 19",type:"route"},
-  {name:"Route 20",type:"route"},{name:"Route 21",type:"route"},{name:"Route 22",type:"route"},
-  {name:"Route 23",type:"route"},
-  {name:"Dausing-Hof",type:"route"},{name:"Vapydro-Komplex",type:"route"},
-  {name:"Stratos-Kanalisation",type:"route"},{name:"Wüstenresort",type:"route"},
-  {name:"Alter Palast",type:"route"},{name:"Janusberg",type:"route"},
-  {name:"Drachenstiege",type:"route"},{name:"Riesengrotte",type:"route"},
-  {name:"Siegesstraße",type:"route"},{name:"Himmelsturm",type:"route"},
-  {name:"Grundwassersenke",type:"route"},{name:"Elektrolithhöhle",type:"route"},
-  {name:"Wendelberg",type:"route"},{name:"Strandgrotte",type:"route"},
-  {name:"Alter Fluchtweg",type:"route"},{name:"P2-Labor",type:"route"},
-  {name:"Beschwörungshöhle",type:"route"},{name:"Kontaktwald",type:"route"},
-  {name:"Lostlorn-Wald",type:"route"},{name:"Verlassener Hof",type:"route"},
-  {name:"Liberty-Garten",type:"route"},
-  {name:"Marea-Zugbrücke",type:"route"},{name:"Himmelspfeilbrücke",type:"route"},
-  {name:"Wunderbrücke",type:"route"},{name:"Zylinderbrücke",type:"route"},
-  {name:"Dorfbrücke",type:"route"},
+  // ANFANG (vor 1. Orden)
   {name:"Starter (Bell)",type:"gift"},
+  {name:"Eventura City",type:"route"},
+  {name:"Route 19",type:"route"},
+  {name:"Route 20",type:"route"},
+  {name:"Dausing",type:"route"},
+  {name:"Dausing-Hof",type:"route"},
+  // → 1. Orden Cheren
+  {name:"Route 20 (Nord)",type:"route"},
+  {name:"Vapydro-Komplex",type:"route"},
+  {name:"Vapydro City",type:"route"},
+  // → 2. Orden Mica
+  {name:"Lostlorn-Wald",type:"route"},
+  {name:"Route 2",type:"route"},
+  {name:"Stratos City",type:"route"},
+  {name:"Stratos-Kanalisation",type:"route"},
+  // → 3. Orden Artie
+  {name:"Route 4",type:"route"},
+  {name:"Wüstenresort",type:"route"},
+  {name:"Alter Palast",type:"route"},
+  {name:"Rayono City",type:"route"},
+  // → 4. Orden Kamilla
+  {name:"Route 16",type:"route"},
+  {name:"Liberty-Garten",type:"route"},
+  {name:"Marea-Zugbrücke",type:"route"},
+  {name:"Marea City",type:"route"},
+  // → 5. Orden Turner
+  {name:"Verlassener Hof",type:"route"},
+  {name:"Route 6",type:"route"},
+  {name:"Grundwassersenke",type:"route"},
+  {name:"Himmelspfeilbrücke",type:"route"},
+  {name:"Panaero City",type:"route"},
+  // → 6. Orden Géraldine
+  {name:"Route 7",type:"route"},
+  {name:"Wendelberg",type:"route"},
+  {name:"Tessera",type:"route"},
+  {name:"Wunderbrücke",type:"route"},
+  {name:"Ondula",type:"route"},
+  {name:"Route 13",type:"route"},
+  {name:"Janusberg",type:"route"},
+  {name:"Monsentiero",type:"route"},
+  {name:"Route 14",type:"route"},
+  {name:"Drachenstiege",type:"route"},
+  {name:"Twindrake City",type:"route"},
+  // → 7. Orden Lysander
+  {name:"Route 9",type:"route"},
+  {name:"Zylinderbrücke",type:"route"},
+  {name:"Strandgrotte",type:"route"},
+  {name:"Abidaya City",type:"route"},
+  // → 8. Orden Benson
+  {name:"Route 22",type:"route"},
+  {name:"Riesengrotte",type:"route"},
+  {name:"Route 23",type:"route"},
+  {name:"Siegesstraße",type:"route"},
+  // → Top 4 / Champ
+  // Post-Game
+  {name:"Route 1",type:"route"},
+  {name:"Route 3",type:"route"},
+  {name:"Route 5",type:"route"},
+  {name:"Route 8",type:"route"},
+  {name:"Route 11",type:"route"},
+  {name:"Route 12",type:"route"},
+  {name:"Dorfbrücke",type:"route"},
+  {name:"Route 15",type:"route"},
+  {name:"Route 17",type:"route"},
+  {name:"Route 18",type:"route"},
+  {name:"Route 21",type:"route"},
+  {name:"Nevaio City",type:"route"},
+  {name:"Septerna City",type:"route"},
+  {name:"Himmelsturm",type:"route"},
+  {name:"Elektrolithhöhle",type:"route"},
+  {name:"Alter Fluchtweg",type:"route"},
+  {name:"P2-Labor",type:"route"},
+  {name:"Beschwörungshöhle",type:"route"},
+  {name:"Kontaktwald",type:"route"},
+  // STATIC
   {name:"Fossil-Pokémon",type:"static"},
+  {name:"Zorua",type:"static"},
   {name:"Cobalion (Wendelberg)",type:"static"},
   {name:"Terrakion (Siegesstraße)",type:"static"},
   {name:"Virizion (Kontaktwald)",type:"static"},
   {name:"Zekrom (Riesengrotte)",type:"static"},
   {name:"Kyurem (Riesengrotte)",type:"static"},
-  {name:"Zorua",type:"static"},
   {name:"Boreos/Voltolos (wandernd)",type:"static"},
 ];
 
-// Badge-Sprites als SVG-Data-URLs – garantiert unabhängig von externen Quellen
-// Jeder Orden hat sein eigenes charakteristisches Symbol
-function makeBadgeSvg(symbol, color, bg = "transparent") {
-  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'>
-    <circle cx='20' cy='20' r='18' fill='${bg}' stroke='${color}' stroke-width='2.5' opacity='0.9'/>
-    <text x='20' y='26' text-anchor='middle' font-size='18' fill='${color}'>${symbol}</text>
-  </svg>`;
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-}
-
+// Orden-Sprites aus dem Spiel – in public/badges/ abgelegt
 export const GYM_CAPS = [
-  {name:"Cheren",    level:13, sprite:makeBadgeSvg("◈","#e8e8e8"), color:"#e8e8e8"},
-  {name:"Mica",      level:18, sprite:makeBadgeSvg("☠","#9b5de5"), color:"#9b5de5"},
-  {name:"Artie",     level:24, sprite:makeBadgeSvg("🐛","#4ade80"), color:"#4ade80"},
-  {name:"Kamilla",   level:30, sprite:makeBadgeSvg("⚡","#fbbf24"), color:"#fbbf24"},
-  {name:"Turner",    level:33, sprite:makeBadgeSvg("⛰","#a16207"), color:"#ca8a04"},
-  {name:"Géraldine", level:39, sprite:makeBadgeSvg("✈","#38bdf8"), color:"#38bdf8"},
-  {name:"Lysander",  level:48, sprite:makeBadgeSvg("🐉","#818cf8"), color:"#818cf8"},
-  {name:"Benson",    level:51, sprite:makeBadgeSvg("🌊","#0ea5e9"), color:"#0ea5e9"},
+  {name:"Cheren",    level:13, sprite:"/badges/badge1.png", color:"#c9b574"},
+  {name:"Mica",      level:18, sprite:"/badges/badge2.png", color:"#b14ec3"},
+  {name:"Artie",     level:24, sprite:"/badges/badge3.png", color:"#7fd35c"},
+  {name:"Kamilla",   level:30, sprite:"/badges/badge4.png", color:"#f7d44a"},
+  {name:"Turner",    level:33, sprite:"/badges/badge5.png", color:"#c89968"},
+  {name:"Géraldine", level:39, sprite:"/badges/badge6.png", color:"#5fbce0"},
+  {name:"Lysander",  level:48, sprite:"/badges/badge7.png", color:"#8b7fd6"},
+  {name:"Benson",    level:51, sprite:"/badges/badge8.png", color:"#4fb5ff"},
 ];
 
-// Top 4 + Champ
+// Top 4 + Champ – als zusätzliche "Arenakämpfe" mit Symbolen
+// (keine echten Badges, daher icon statt sprite)
 export const ELITE_CAPS = [
-  {name:"Anissa",        level:56, icon:"👁"},
-  {name:"Astor",         level:56, icon:"🃏"},
-  {name:"Kattlea",       level:57, icon:"🌙"},
-  {name:"Eugen",         level:58, icon:"👊"},
-  {name:"Lilia (Champ)", level:59, icon:"👑"},
+  {name:"Anissa",        level:56, icon:"👻", color:"#a78bfa"}, // Geist
+  {name:"Astor",         level:56, icon:"🎴", color:"#f59e0b"}, // Unlicht
+  {name:"Kattlea",       level:57, icon:"🔮", color:"#ec4899"}, // Psycho
+  {name:"Eugen",         level:58, icon:"🥊", color:"#dc2626"}, // Kampf
+  {name:"Lilia (Champ)", level:59, icon:"👑", color:"#fbbf24"}, // Champ
 ];
 
 // Alle Caps chronologisch – type: "gym" | "rival" | "elite" | "champ"
-// rivalKey: eindeutiger Key für Firebase (Rivalen-Toggle)
 export const ALL_CAPS = [
   {name:"Matisse (Dausing-Hof)",         level:8,  type:"rival", icon:"⚔", rivalKey:"r0"},
   {name:"Cheren",                         level:13, type:"gym",   badgeIdx:0},
@@ -85,11 +122,11 @@ export const ALL_CAPS = [
   {name:"Lysander",                       level:48, type:"gym",   badgeIdx:6},
   {name:"Benson",                         level:51, type:"gym",   badgeIdx:7},
   {name:"Matisse (Siegesstraße)",         level:57, type:"rival", icon:"⚔", rivalKey:"r4"},
-  {name:"Anissa",                         level:56, type:"elite", icon:"👁"},
-  {name:"Astor",                          level:56, type:"elite", icon:"🃏"},
-  {name:"Kattlea",                        level:57, type:"elite", icon:"🌙"},
-  {name:"Eugen",                          level:58, type:"elite", icon:"👊"},
-  {name:"Lilia (Champ)",                  level:59, type:"champ", icon:"👑"},
+  {name:"Anissa",                         level:56, type:"elite", eliteIdx:0, icon:"👻"},
+  {name:"Astor",                          level:56, type:"elite", eliteIdx:1, icon:"🎴"},
+  {name:"Kattlea",                        level:57, type:"elite", eliteIdx:2, icon:"🔮"},
+  {name:"Eugen",                          level:58, type:"elite", eliteIdx:3, icon:"🥊"},
+  {name:"Lilia (Champ)",                  level:59, type:"champ", eliteIdx:4, icon:"👑"},
 ];
 
 export const BADGE_COLORS = ["#a8d8ea","#9b5de5","#00bbf9","#fee440","#8B4513","#0dcaf0","#9467bd","#0a9396"];
