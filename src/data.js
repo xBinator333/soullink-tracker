@@ -39,35 +39,49 @@ export const LOCATIONS = [
   {name:"Boreos/Voltolos (wandernd)",type:"static"},
 ];
 
+// Badge-Sprite-URLs von Bulbapedia (offizielle Game-Sprites Schwarz 2)
+const BB = "https://archives.bulbagarden.net/media/upload";
 export const GYM_CAPS = [
-  {name:"Cheren",badge:"Basis-Orden",level:13},
-  {name:"Mica",badge:"Gift-Orden",level:18},
-  {name:"Artie",badge:"Insekten-Orden",level:24},
-  {name:"Kamilla",badge:"Blitz-Orden",level:30},
-  {name:"Turner",badge:"Quake-Orden",level:33},
-  {name:"Géraldine",badge:"Jet-Orden",level:39},
-  {name:"Lysander",badge:"Legende-Orden",level:48},
-  {name:"Benson",badge:"Wellen-Orden",level:51},
+  {name:"Cheren",  level:13, sprite:`${BB}/5/52/Basic_Badge.png`},
+  {name:"Mica",    level:18, sprite:`${BB}/a/a7/Toxic_Badge.png`},
+  {name:"Artie",   level:24, sprite:`${BB}/7/74/Insect_Badge.png`},
+  {name:"Kamilla", level:30, sprite:`${BB}/a/a8/Bolt_Badge.png`},
+  {name:"Turner",  level:33, sprite:`${BB}/e/ef/Quake_Badge.png`},
+  {name:"Géraldine",level:39,sprite:`${BB}/0/04/Jet_Badge.png`},
+  {name:"Lysander",level:48, sprite:`${BB}/d/d4/Legend_Badge.png`},
+  {name:"Benson",  level:51, sprite:`${BB}/7/7e/Wave_Badge.png`},
 ];
 
-// Top 4 + Champ – nach Marlon ohne weitere Orden, einfach als zusätzliche Caps
+// Top 4 + Champ
 export const ELITE_CAPS = [
-  {name:"Anissa",level:56},
-  {name:"Astor",level:56},
-  {name:"Kattlea",level:57},
-  {name:"Eugen",level:58},
-  {name:"Lilia (Champ)",level:59},
+  {name:"Anissa",       level:56, icon:"👁"},
+  {name:"Astor",        level:56, icon:"🃏"},
+  {name:"Kattlea",      level:57, icon:"🌙"},
+  {name:"Eugen",        level:58, icon:"👊"},
+  {name:"Lilia (Champ)",level:59, icon:"👑"},
 ];
 
-// Rivalenkämpfe (zwischen / zusätzlich zu den Arena-Caps)
-// "after" = nach welchem Arena-Cap-Index (0-basiert) findet der Kampf statt
-// "after: -1" = ganz am Anfang, vor dem ersten Orden
-export const RIVAL_CAPS = [
-  {name:"Matisse (Dausing-Hof)",level:8,after:-1},
-  {name:"Matisse (Stratos-Kanalisation)",level:20,after:2}, // nach Burgh (Cap 24)
-  {name:"Matisse (Ondula)",level:41,after:5},               // nach Skyla (Cap 39)
-  {name:"Matisse (Tessera)",level:43,after:5},
-  {name:"Matisse (Siegesstraße)",level:57,after:7},         // nach Benson, vor Top 4
+// Alle Caps chronologisch gemischt (Arenen + Rivalen + Top4 + Champ)
+// type: "gym" | "rival" | "elite" | "champ"
+export const ALL_CAPS = [
+  {name:"Matisse (Dausing-Hof)",        level:8,  type:"rival", icon:"⚔"},
+  {name:"Cheren",                        level:13, type:"gym",   badgeIdx:0},
+  {name:"Mica",                          level:18, type:"gym",   badgeIdx:1},
+  {name:"Matisse (Stratos-Kanalisation)",level:20, type:"rival", icon:"⚔"},
+  {name:"Artie",                         level:24, type:"gym",   badgeIdx:2},
+  {name:"Kamilla",                       level:30, type:"gym",   badgeIdx:3},
+  {name:"Turner",                        level:33, type:"gym",   badgeIdx:4},
+  {name:"Géraldine",                     level:39, type:"gym",   badgeIdx:5},
+  {name:"Matisse (Ondula)",              level:41, type:"rival", icon:"⚔"},
+  {name:"Matisse (Tessera)",             level:43, type:"rival", icon:"⚔"},
+  {name:"Lysander",                      level:48, type:"gym",   badgeIdx:6},
+  {name:"Benson",                        level:51, type:"gym",   badgeIdx:7},
+  {name:"Matisse (Siegesstraße)",        level:57, type:"rival", icon:"⚔"},
+  {name:"Anissa",                        level:56, type:"elite",  icon:"👁"},
+  {name:"Astor",                         level:56, type:"elite",  icon:"🃏"},
+  {name:"Kattlea",                       level:57, type:"elite",  icon:"🌙"},
+  {name:"Eugen",                         level:58, type:"elite",  icon:"👊"},
+  {name:"Lilia (Champ)",                 level:59, type:"champ",  icon:"👑"},
 ];
 
 export const BADGE_COLORS = ["#a8d8ea","#9b5de5","#00bbf9","#fee440","#8B4513","#0dcaf0","#9467bd","#0a9396"];

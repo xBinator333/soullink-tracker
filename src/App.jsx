@@ -1,8 +1,8 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { ref, push, set } from "firebase/database";
 import { db } from "./firebase.js";
-import { LOCATIONS, GYM_CAPS, ELITE_CAPS, RIVAL_CAPS, BADGE_COLORS, getEvoChain, C } from "./data.js";
-import { fetchGermanPokemonNames } from "./pokemon.js";
+import { LOCATIONS, GYM_CAPS, ELITE_CAPS, ALL_CAPS, BADGE_COLORS, getEvoChain, C } from "./data.js";
+import { fetchGermanPokemonNames, calcCatchRate, catchRateColor } from "./pokemon.js";
 import { useFirebaseSync } from "./useFirebaseSync.js";
 
 const CSS = `
@@ -444,6 +444,37 @@ function EncModal({ mode, pendingEnc, pokemonList, player, customLocations, used
               <div className="mono" style={{ fontSize: 10, color: C.sub, marginBottom: 7 }}>POKÉMON</div>
               <PokemonSearch pokemonList={pokemonList} value={species} onChange={setSpecies} />
             </div>
+
+            {/* Fangrate-Anzeige */}
+            {species?.catchRate != null && (
+              <div className="fade" style={{
+                background: C.lift, border: `1px solid ${C.border}`,
+                borderRadius: 8, padding: "10px 14px" }}>
+                <div className="mono" style={{ fontSize: 9, color: C.sub, marginBottom: 8, letterSpacing: 1 }}>
+                  FANGRATE BEI 100% HP
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+                  {[
+                    { label: "Normball", multi: 1, emoji: "⚪" },
+                    { label: "Superball", multi: 1.5, emoji: "🔵" },
+                    { label: "Hyperball", multi: 2, emoji: "🟡" },
+                  ].map(ball => {
+                    const pct = calcCatchRate(species.catchRate, ball.multi);
+                    const col = catchRateColor(pct);
+                    return (
+                      <div key={ball.label} style={{
+                        textAlign: "center", padding: "8px 4px",
+                        background: `${col}12`, borderRadius: 7,
+                        border: `1px solid ${col}44` }}>
+                        <div style={{ fontSize: 18, marginBottom: 4 }}>{ball.emoji}</div>
+                        <div style={{ fontWeight: 900, fontSize: 16, color: col }}>{pct}%</div>
+                        <div className="mono" style={{ fontSize: 8, color: C.sub, marginTop: 2 }}>{ball.label}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 80px", gap: 8 }}>
               <div>
                 <div className="mono" style={{ fontSize: 10, color: C.sub, marginBottom: 7 }}>SPITZNAME</div>
@@ -979,38 +1010,59 @@ export default function App() {
         </header>
 
         <div style={{ background: C.panel, borderBottom: `1px solid ${C.border}`,
-          padding: "8px 16px", display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            {GYM_CAPS.map((c, i) => {
-              const earned = st.badges[i];
-              const isCurr = i === badgeCount;
-              return (
-                <button key={i} onClick={() => {
-                  const b = [...st.badges]; b[i] = !b[i];
-                  writeState({ ...st, badges: b });
-                }} title={`${c.badge} · Cap Lv ${c.level}`}
-                  style={{ background: "none", border: "none", cursor: "pointer", padding: 0,
-                    display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-                  <div style={{ width: 30, height: 30, borderRadius: "50%",
-                    background: earned ? BADGE_COLORS[i] + "cc" : "transparent",
-                    border: `2px solid ${earned ? BADGE_COLORS[i] : isCurr ? C.p1 : C.border}`,
-                    display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13,
-                    boxShadow: earned ? `0 0 10px ${BADGE_COLORS[i]}77` : isCurr ? `0 0 8px ${C.p1}44` : "none" }}>
-                    {earned ? "★" : isCurr ? "◎" : "○"}
-                  </div>
-                  <span className="mono" style={{ fontSize: 7,
-                    color: earned ? BADGE_COLORS[i] : isCurr ? C.p1 : C.dim }}>
-                    {c.badge.replace("-Orden", "")}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-          <div style={{ width: 1, height: 36, background: C.border }} />
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <span className="mono" style={{ fontSize: 10, color: C.sub }}>Cap:</span>
-            <span style={{ fontWeight: 700, fontSize: 13, color: C.p1 }}>≤ {capLevel}</span>
-            <span className="mono" style={{ fontSize: 10, color: C.sub }}>· andere ≤ {capLevel - 2}</span>
+          padding: "10px 16px", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          {/* Orden mit echten Sprites */}
+          {GYM_CAPS.map((c, i) => {
+            const earned = st.badges[i];
+            const isCurr = i === badgeCount;
+            return (
+              <button key={i} onClick={() => {
+                const b = [...st.badges]; b[i] = !b[i];
+                writeState({ ...st, badges: b });
+              }} title={`${c.name} · Cap Lv ${c.level}`}
+                style={{ background: "none", border: "none", cursor: "pointer", padding: 2,
+                  display: "flex", flexDirection: "column", alignItems: "center", gap: 0,
+                  position: "relative" }}>
+                <div style={{
+                  width: 44, height: 44,
+                  borderRadius: 8,
+                  border: `2px solid ${earned ? "#ffffff55" : isCurr ? C.p1 + "88" : C.border}`,
+                  background: earned ? "transparent" : `${C.lift}cc`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  filter: earned ? "none" : "grayscale(1) opacity(0.35)",
+                  boxShadow: earned ? "0 0 12px #ffffff33, 0 2px 8px #0008" : isCurr ? `0 0 8px ${C.p1}44` : "none",
+                  transition: "all .2s",
+                  overflow: "hidden" }}>
+                  <img src={c.sprite} alt={c.name}
+                    style={{ width: 38, height: 38, objectFit: "contain",
+                      imageRendering: "pixelated" }}
+                    onError={e => { e.target.style.display = "none"; e.target.nextSibling.style.display = "flex" }} />
+                  <div style={{ display: "none", width: "100%", height: "100%",
+                    alignItems: "center", justifyContent: "center",
+                    fontSize: 18, color: earned ? "#fff" : C.dim }}>★</div>
+                </div>
+                {isCurr && !earned && (
+                  <div style={{ position: "absolute", bottom: -2,
+                    width: 6, height: 6, borderRadius: "50%",
+                    background: C.p1, boxShadow: `0 0 6px ${C.p1}` }} />
+                )}
+              </button>
+            );
+          })}
+
+          <div style={{ width: 1, height: 44, background: C.border, margin: "0 6px" }} />
+
+          {/* Aktueller Cap – prägnant */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span className="mono" style={{ fontSize: 9, color: C.sub }}>NÄCHSTER CAP</span>
+            </div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 5 }}>
+              <span style={{ fontWeight: 900, fontSize: 22, color: C.p1, lineHeight: 1 }}>
+                {capLevel}
+              </span>
+              <span className="mono" style={{ fontSize: 10, color: C.sub }}>· {currentCap?.name}</span>
+            </div>
           </div>
         </div>
 
@@ -1336,69 +1388,41 @@ export default function App() {
                 ))}
               </div>
 
-              {/* Level-Cap Übersicht */}
+              {/* Chronologische Cap-Liste */}
               <div className="mono" style={{ fontSize: 10, color: C.sub, marginBottom: 8 }}>
-                LEVEL CAPS – ARENEN
+                LEVEL CAPS – CHRONOLOGISCH
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 5, marginBottom: 14 }}>
-                {GYM_CAPS.map((c, i) => (
-                  <div key={i} style={{
-                    display: "flex", alignItems: "center", gap: 8,
-                    background: st.badges[i] ? `${BADGE_COLORS[i]}14` : C.lift,
-                    border: `1px solid ${st.badges[i] ? BADGE_COLORS[i] + "55" : C.border}`,
-                    borderRadius: 6, padding: "5px 9px" }}>
-                    <span style={{ fontSize: 11,
-                      color: st.badges[i] ? BADGE_COLORS[i] : C.sub }}>
-                      {st.badges[i] ? "★" : "○"}
-                    </span>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: st.badges[i] ? C.text : C.sub }}>
-                      {c.name}
-                    </span>
-                    <span className="mono" style={{ marginLeft: "auto", fontSize: 10, color: C.dim }}>
-                      Lv {c.level}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mono" style={{ fontSize: 10, color: C.sub, marginBottom: 8 }}>
-                LEVEL CAPS – TOP 4 & CHAMP
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 14 }}>
-                {ELITE_CAPS.map((c, i) => (
-                  <div key={i} style={{
-                    display: "flex", alignItems: "center", gap: 8,
-                    background: C.lift, border: `1px solid ${C.border}`,
-                    borderRadius: 6, padding: "5px 10px" }}>
-                    <span style={{ fontSize: 11, color: C.gold }}>👑</span>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: C.text }}>
-                      {c.name}
-                    </span>
-                    <span className="mono" style={{ marginLeft: "auto", fontSize: 10, color: C.dim }}>
-                      Lv {c.level}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mono" style={{ fontSize: 10, color: C.sub, marginBottom: 8 }}>
-                RIVALENKÄMPFE
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                {RIVAL_CAPS.map((c, i) => (
-                  <div key={i} style={{
-                    display: "flex", alignItems: "center", gap: 8,
-                    background: C.lift, border: `1px solid ${C.border}`,
-                    borderRadius: 6, padding: "5px 10px" }}>
-                    <span style={{ fontSize: 11 }}>⚔</span>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: C.text }}>
-                      {c.name}
-                    </span>
-                    <span className="mono" style={{ marginLeft: "auto", fontSize: 10, color: C.dim }}>
-                      Lv {c.level}
-                    </span>
-                  </div>
-                ))}
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                {ALL_CAPS.map((c, i) => {
+                  const isGym = c.type === "gym";
+                  const earned = isGym && st.badges[c.badgeIdx];
+                  const isChamp = c.type === "champ";
+                  const isElite = c.type === "elite";
+                  const isRival = c.type === "rival";
+                  const col = isChamp ? C.gold : isElite ? C.link : isRival ? C.warn : C.p1;
+                  return (
+                    <div key={i} style={{
+                      display: "flex", alignItems: "center", gap: 10,
+                      background: earned ? `${col}14` : C.lift,
+                      border: `1px solid ${earned ? col + "44" : C.border}`,
+                      borderLeft: `3px solid ${earned ? col : C.border}`,
+                      borderRadius: 6, padding: "6px 10px",
+                      opacity: earned ? 1 : 0.7 }}>
+                      {isGym ? (
+                        <img src={GYM_CAPS[c.badgeIdx].sprite} alt=""
+                          style={{ width: 22, height: 22, objectFit: "contain",
+                            imageRendering: "pixelated",
+                            filter: earned ? "none" : "grayscale(1) opacity(0.4)" }} />
+                      ) : (
+                        <span style={{ fontSize: 14, width: 22, textAlign: "center" }}>{c.icon}</span>
+                      )}
+                      <span style={{ fontSize: 12, fontWeight: 700,
+                        color: earned ? C.text : C.sub }}>{c.name}</span>
+                      <span className="mono" style={{ marginLeft: "auto", fontSize: 11,
+                        fontWeight: 700, color: col }}>Lv {c.level}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
