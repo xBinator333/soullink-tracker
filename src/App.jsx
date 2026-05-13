@@ -15,6 +15,7 @@ const CSS = `
   @keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
   @keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
   @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
+  @keyframes glow{0%,100%{box-shadow:0 0 0 3px ${C.p1}44,0 0 12px ${C.p1}55}50%{box-shadow:0 0 0 4px ${C.p1}88,0 0 22px ${C.p1}99}}
   .fade{animation:fadeIn .18s ease forwards}
   .mono{font-family:'Share Tech Mono',monospace}
   input{background:${C.lift};border:1px solid ${C.border};border-radius:7px;
@@ -852,6 +853,8 @@ export default function App() {
 
   function setStatus(pk, encId, status) {
     const ok = pk === "p1" ? "p2" : "p1";
+
+    // Team-voll-Check
     if (status === "team") {
       const enc = st[pk].encounters.find(e => e.id === encId);
       if (enc && enc.status !== "team") {
@@ -864,28 +867,56 @@ export default function App() {
     }
 
     const enc = st[pk].encounters.find(e => e.id === encId);
-    const wasNotDead = enc && enc.status !== "dead";
-    let ns = { ...st, [pk]: { ...st[pk],
-      encounters: st[pk].encounters.map(e => e.id === encId ? { ...e, status } : e) } };
+    if (!enc) return;
 
-    // Todescounter erhöhen NUR bei dem Spieler der das Pokémon auf "Gefallen" setzt
-    if (status === "dead" && wasNotDead) {
+    let ns = {
+      ...st,
+      [pk]: { ...st[pk],
+        encounters: st[pk].encounters.map(e => e.id === encId ? { ...e, status } : e) },
+    };
+
+    // Todescounter NUR bei dem Spieler der "Gefallen" klickt
+    const wasAlive = enc.status !== "dead" && enc.status !== "ko";
+    if ((status === "dead" || status === "ko") && wasAlive) {
       ns[pk] = { ...ns[pk], totalDeaths: (ns[pk].totalDeaths || 0) + 1 };
     }
 
-    // Soul-Link-Kaskade: Partner geht IN DIE BOX (nicht stirbt automatisch).
-    // Der Spieler entscheidet selbst ob/wann er das Partner-Pokémon als gefallen markiert.
-    // Wird nur ausgeführt wenn die Soul-Links Tab/Logik noch aktiv ist (intern weiterhin geführt).
+    // Soul-Link Partner synchron mitbewegen
     const link = st.links.find(l => (pk === "p1" ? l.p1Id : l.p2Id) === encId);
     if (link) {
       const pid = pk === "p1" ? link.p2Id : link.p1Id;
       const partnerEnc = st[ok].encounters.find(e => e.id === pid);
-      // Bei Tod → Partner geht in die Box, aber zählt NICHT als Tod (das macht der andere Spieler manuell)
-      if (status === "dead" && partnerEnc && partnerEnc.status === "team") {
-        ns[ok] = { ...ns[ok],
-          encounters: ns[ok].encounters.map(e => e.id === pid ? { ...e, status: "box" } : e) };
+      if (partnerEnc) {
+        if (status === "dead" || status === "ko") {
+          // Partner geht AUCH ins Grab – aber KEIN Todescounter-Increment
+          if (partnerEnc.status !== "dead" && partnerEnc.status !== "ko") {
+            ns[ok] = { ...ns[ok],
+              encounters: ns[ok].encounters.map(e =>
+                e.id === pid ? { ...e, status: "dead" } : e
+              ),
+            };
+          }
+        } else if (status === "box" && partnerEnc.status === "team") {
+          // Synchron in Box
+          ns[ok] = { ...ns[ok],
+            encounters: ns[ok].encounters.map(e =>
+              e.id === pid ? { ...e, status: "box" } : e
+            ),
+          };
+        } else if (status === "team" && partnerEnc.status === "box") {
+          // Synchron ins Team – nur wenn Platz
+          const partnerTeamSize = ns[ok].encounters.filter(e => e.status === "team").length;
+          if (partnerTeamSize < 6) {
+            ns[ok] = { ...ns[ok],
+              encounters: ns[ok].encounters.map(e =>
+                e.id === pid ? { ...e, status: "team" } : e
+              ),
+            };
+          }
+        }
       }
     }
+
     writeState(ns);
   }
 
@@ -1012,87 +1043,110 @@ export default function App() {
         </header>
 
         <div style={{ background: C.panel, borderBottom: `1px solid ${C.border}`,
-          padding: "10px 16px", display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+          padding: "10px 16px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
 
-          {/* Chronologische Leiste: Orden + Rivalen anklickbar */}
-          {ALL_CAPS.filter(c => c.type === "gym" || c.type === "rival").map((c, i) => {
-            const done = c.type === "gym" ? st.badges[c.badgeIdx] : rivalsDone[c.rivalKey];
-            const isNext = currentCapEntry === c;
-            const isRival = c.type === "rival";
-
-            return (
-              <button key={i} onClick={() => {
-                if (isRival) {
-                  writeState({ ...st, rivalsDone: { ...rivalsDone, [c.rivalKey]: !rivalsDone[c.rivalKey] } });
-                } else {
-                  const b = [...st.badges]; b[c.badgeIdx] = !b[c.badgeIdx];
-                  writeState({ ...st, badges: b });
-                }
-              }} title={`${c.name} · Cap Lv ${c.level}`}
-                style={{ background: "none", border: "none", cursor: "pointer", padding: "2px 1px",
-                  display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
-                  position: "relative", opacity: done ? 1 : 0.45,
-                  transition: "opacity .2s, transform .15s" }}
-                onMouseEnter={e => e.currentTarget.style.transform = "scale(1.12)"}
-                onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>
-
-                {isRival ? (
-                  // Rivalen: kleines ⚔-Symbol
+          {/* ORDEN – nur Gym-Einträge */}
+          <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+            {ALL_CAPS.filter(c => c.type === "gym").map((c, i) => {
+              const done = st.badges[c.badgeIdx];
+              const isNext = currentCapEntry === c;
+              const isClickable = isNext && !done;
+              return (
+                <button key={i}
+                  onClick={() => {
+                    if (!isClickable) return;
+                    const b = [...st.badges]; b[c.badgeIdx] = true;
+                    writeState({ ...st, badges: b });
+                  }}
+                  title={`${c.name} · Cap Lv ${c.level}`}
+                  style={{ background: "none", border: "none",
+                    cursor: isClickable ? "pointer" : "default",
+                    padding: 2, display: "flex", flexDirection: "column",
+                    alignItems: "center", gap: 0, position: "relative",
+                    transition: "transform .15s" }}
+                  onMouseEnter={e => { if (isClickable) e.currentTarget.style.transform = "scale(1.15)" }}
+                  onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>
                   <div style={{
-                    width: 28, height: 28, borderRadius: 6,
-                    background: done ? `${C.warn}33` : C.lift,
-                    border: `2px solid ${done ? C.warn : isNext ? C.p1 + "88" : C.border}`,
+                    width: 42, height: 42, borderRadius: 9,
+                    border: isNext && !done
+                      ? `2px solid ${C.p1}`
+                      : done ? `2px solid #ffffff33` : `2px solid ${C.border}`,
+                    background: done ? "transparent" : C.lift,
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 13,
-                    boxShadow: isNext && !done ? `0 0 8px ${C.p1}44` : "none" }}>
-                    {done ? "✓" : "⚔"}
-                  </div>
-                ) : (
-                  // Orden: echtes Sprite
-                  <div style={{
-                    width: 40, height: 40, borderRadius: 8,
-                    border: `2px solid ${done ? "#ffffff44" : isNext ? C.p1 + "88" : C.border}`,
-                    background: done ? "transparent" : `${C.lift}cc`,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    filter: done ? "none" : "grayscale(1) opacity(0.3)",
-                    boxShadow: done ? "0 0 12px #ffffff22, 0 2px 8px #0008"
-                      : isNext ? `0 0 8px ${C.p1}44` : "none",
-                    overflow: "hidden", transition: "all .2s" }}>
+                    filter: done ? "none" : "grayscale(1) opacity(0.25)",
+                    boxShadow: isNext && !done
+                      ? `0 0 0 3px ${C.p1}44, 0 0 16px ${C.p1}66`
+                      : done ? "0 0 10px #ffffff18, 0 2px 8px #0008" : "none",
+                    overflow: "hidden", transition: "all .2s",
+                    animation: isNext && !done ? "glow 2s ease infinite" : "none" }}>
                     <img src={GYM_CAPS[c.badgeIdx].sprite} alt=""
-                      style={{ width: 34, height: 34, objectFit: "contain", imageRendering: "pixelated" }}
-                      onError={e => { e.target.style.display = "none"; e.target.nextSibling.style.display = "block" }} />
-                    <span style={{ display: "none", fontSize: 18 }}>★</span>
+                      style={{ width: 36, height: 36, objectFit: "contain", imageRendering: "pixelated" }}
+                      onError={e => {
+                        e.target.style.display = "none";
+                        e.target.nextSibling.style.display = "block";
+                      }} />
+                    <span style={{ display: "none", fontSize: 20, color: done ? C.gold : C.dim }}>★</span>
                   </div>
-                )}
+                </button>
+              );
+            })}
+          </div>
 
-                {/* Punkt unter dem aktiven Eintrag */}
-                {isNext && !done && (
-                  <div style={{ width: 5, height: 5, borderRadius: "50%",
-                    background: C.p1, boxShadow: `0 0 5px ${C.p1}` }} />
-                )}
-              </button>
-            );
-          })}
+          <div style={{ width: 1, height: 40, background: C.border }} />
 
-          <div style={{ width: 1, height: 40, background: C.border, margin: "0 8px" }} />
+          {/* RIVALEN – kompakt nebeneinander */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            <div className="mono" style={{ fontSize: 8, color: C.sub, letterSpacing: 1 }}>MATISSE</div>
+            <div style={{ display: "flex", gap: 4 }}>
+              {ALL_CAPS.filter(c => c.type === "rival").map((c, i) => {
+                const done = rivalsDone[c.rivalKey];
+                const isNext = currentCapEntry === c;
+                const isClickable = isNext && !done;
+                const shortName = c.name.replace("Matisse (", "").replace(")", "");
+                return (
+                  <button key={i}
+                    onClick={() => {
+                      if (!isClickable) return;
+                      writeState({ ...st, rivalsDone: { ...rivalsDone, [c.rivalKey]: true } });
+                    }}
+                    title={`${c.name} · Cap Lv ${c.level}`}
+                    style={{ background: "none", border: "none",
+                      cursor: isClickable ? "pointer" : "default",
+                      padding: 0, transition: "transform .15s" }}
+                    onMouseEnter={e => { if (isClickable) e.currentTarget.style.transform = "scale(1.12)" }}
+                    onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>
+                    <div style={{
+                      padding: "3px 7px", borderRadius: 5, fontSize: 9, fontWeight: 700,
+                      fontFamily: "'Share Tech Mono', monospace",
+                      border: isNext && !done
+                        ? `1.5px solid ${C.warn}`
+                        : done ? `1.5px solid ${C.warn}55` : `1.5px solid ${C.border}`,
+                      background: done ? `${C.warn}22` : isNext && !done ? `${C.warn}14` : C.lift,
+                      color: done ? C.warn : isNext && !done ? C.warn : C.dim,
+                      boxShadow: isNext && !done ? `0 0 0 2px ${C.warn}33, 0 0 10px ${C.warn}55` : "none",
+                      transition: "all .2s",
+                      whiteSpace: "nowrap" }}>
+                      {done ? "✓ " : ""}{shortName}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
-          {/* Aktueller Cap – gross und prägnant */}
+          <div style={{ width: 1, height: 40, background: C.border }} />
+
+          {/* Aktueller Cap – gross und klar */}
           <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
             <div className="mono" style={{ fontSize: 8, color: C.sub, letterSpacing: 1 }}>
-              {currentCap.type === "rival" ? "RIVALE" : currentCap.type === "gym" ? "ARENA" : "ELITE"}
+              {currentCap.type === "rival" ? "CAP · RIVALE" : currentCap.type === "gym" ? "CAP · ARENA" : "CAP · ELITE"}
             </div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 5 }}>
-              <span style={{ fontWeight: 900, fontSize: 24, color: C.p1, lineHeight: 1 }}>
-                {capLevel}
-              </span>
-              <span style={{ fontWeight: 900, fontSize: 18, color: C.sub, lineHeight: 1 }}>/</span>
-              <span style={{ fontWeight: 700, fontSize: 16, color: C.sub, lineHeight: 1 }}>
-                {capLevel - 2}
-              </span>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+              <span style={{ fontWeight: 900, fontSize: 26, color: C.p1, lineHeight: 1 }}>{capLevel}</span>
+              <span style={{ fontWeight: 700, fontSize: 14, color: C.dim, lineHeight: 1 }}>/</span>
+              <span style={{ fontWeight: 700, fontSize: 18, color: C.sub, lineHeight: 1 }}>{capLevel - 2}</span>
             </div>
-            <div className="mono" style={{ fontSize: 9, color: C.sub }}>
-              {currentCap.name}
-            </div>
+            <div className="mono" style={{ fontSize: 9, color: C.sub }}>{currentCap.name}</div>
           </div>
         </div>
 
@@ -1405,7 +1459,7 @@ export default function App() {
                   const isChamp = c.type === "champ";
                   const isElite = c.type === "elite";
                   const isRival = c.type === "rival";
-                  const col = isChamp ? C.gold : isElite ? C.link : isRival ? C.warn : C.p1;
+                  const col = isChamp ? C.gold : isElite ? C.link : isRival ? C.warn : (isGym ? GYM_CAPS[c.badgeIdx].color : C.p1);
                   return (
                     <div key={i} style={{
                       display: "flex", alignItems: "center", gap: 10,
@@ -1416,9 +1470,7 @@ export default function App() {
                       opacity: earned ? 1 : 0.7 }}>
                       {isGym ? (
                         <img src={GYM_CAPS[c.badgeIdx].sprite} alt=""
-                          style={{ width: 22, height: 22, objectFit: "contain",
-                            imageRendering: "pixelated",
-                            filter: earned ? "none" : "grayscale(1) opacity(0.4)" }} />
+                          style={{ width: 22, height: 22, objectFit: "contain" }} />
                       ) : (
                         <span style={{ fontSize: 14, width: 22, textAlign: "center" }}>{c.icon}</span>
                       )}

@@ -39,17 +39,25 @@ export const LOCATIONS = [
   {name:"Boreos/Voltolos (wandernd)",type:"static"},
 ];
 
-// Badge-Sprite-URLs von Bulbagarden (verifizierte Pfade)
-const BB = "https://archives.bulbagarden.net/media/upload";
+// Badge-Sprites als SVG-Data-URLs – garantiert unabhängig von externen Quellen
+// Jeder Orden hat sein eigenes charakteristisches Symbol
+function makeBadgeSvg(symbol, color, bg = "transparent") {
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'>
+    <circle cx='20' cy='20' r='18' fill='${bg}' stroke='${color}' stroke-width='2.5' opacity='0.9'/>
+    <text x='20' y='26' text-anchor='middle' font-size='18' fill='${color}'>${symbol}</text>
+  </svg>`;
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
 export const GYM_CAPS = [
-  {name:"Cheren",    level:13, sprite:`${BB}/8/85/Basic_Badge.png`},
-  {name:"Mica",      level:18, sprite:`${BB}/a/a7/Toxic_Badge.png`},
-  {name:"Artie",     level:24, sprite:`${BB}/3/3c/Insect_Badge.png`},
-  {name:"Kamilla",   level:30, sprite:`${BB}/a/a8/Bolt_Badge.png`},
-  {name:"Turner",    level:33, sprite:`${BB}/e/ef/Quake_Badge.png`},
-  {name:"Géraldine", level:39, sprite:`${BB}/0/04/Jet_Badge.png`},
-  {name:"Lysander",  level:48, sprite:`${BB}/d/d4/Legend_Badge.png`},
-  {name:"Benson",    level:51, sprite:`${BB}/7/7e/Wave_Badge.png`},
+  {name:"Cheren",    level:13, sprite:makeBadgeSvg("◈","#e8e8e8"), color:"#e8e8e8"},
+  {name:"Mica",      level:18, sprite:makeBadgeSvg("☠","#9b5de5"), color:"#9b5de5"},
+  {name:"Artie",     level:24, sprite:makeBadgeSvg("🐛","#4ade80"), color:"#4ade80"},
+  {name:"Kamilla",   level:30, sprite:makeBadgeSvg("⚡","#fbbf24"), color:"#fbbf24"},
+  {name:"Turner",    level:33, sprite:makeBadgeSvg("⛰","#a16207"), color:"#ca8a04"},
+  {name:"Géraldine", level:39, sprite:makeBadgeSvg("✈","#38bdf8"), color:"#38bdf8"},
+  {name:"Lysander",  level:48, sprite:makeBadgeSvg("🐉","#818cf8"), color:"#818cf8"},
+  {name:"Benson",    level:51, sprite:makeBadgeSvg("🌊","#0ea5e9"), color:"#0ea5e9"},
 ];
 
 // Top 4 + Champ
