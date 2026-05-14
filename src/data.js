@@ -1,12 +1,3 @@
-import badge1 from "./assets/badges/badge1.png";
-import badge2 from "./assets/badges/badge2.png";
-import badge3 from "./assets/badges/badge3.png";
-import badge4 from "./assets/badges/badge4.png";
-import badge5 from "./assets/badges/badge5.png";
-import badge6 from "./assets/badges/badge6.png";
-import badge7 from "./assets/badges/badge7.png";
-import badge8 from "./assets/badges/badge8.png";
-
 export const LOCATIONS = [
   // ANFANG (vor 1. Orden)
   {name:"Starter (Bell)",type:"gift"},
@@ -95,48 +86,49 @@ export const LOCATIONS = [
 ];
 
 
+// Arenaleiter mit Cap-Levels
 export const GYM_CAPS = [
-  {name:"Cheren",    level:13, sprite:badge1, color:"#c9b574"},
-  {name:"Mica",      level:18, sprite:badge2, color:"#b14ec3"},
-  {name:"Artie",     level:24, sprite:badge3, color:"#7fd35c"},
-  {name:"Kamilla",   level:30, sprite:badge4, color:"#f7d44a"},
-  {name:"Turner",    level:33, sprite:badge5, color:"#c89968"},
-  {name:"Géraldine", level:39, sprite:badge6, color:"#5fbce0"},
-  {name:"Lysander",  level:48, sprite:badge7, color:"#8b7fd6"},
-  {name:"Benson",    level:51, sprite:badge8, color:"#4fb5ff"},
+  {name:"Cheren",    level:13},
+  {name:"Mica",      level:18},
+  {name:"Artie",     level:24},
+  {name:"Kamilla",   level:30},
+  {name:"Turner",    level:33},
+  {name:"Géraldine", level:39},
+  {name:"Lysander",  level:48},
+  {name:"Benson",    level:51},
 ];
-// (keine echten Badges, daher icon statt sprite)
+
+// Top 4 + Champ
 export const ELITE_CAPS = [
-  {name:"Anissa",        level:56, icon:"👻", color:"#a78bfa"}, // Geist
-  {name:"Astor",         level:56, icon:"🎴", color:"#f59e0b"}, // Unlicht
-  {name:"Kattlea",       level:57, icon:"🔮", color:"#ec4899"}, // Psycho
-  {name:"Eugen",         level:58, icon:"🥊", color:"#dc2626"}, // Kampf
-  {name:"Lilia (Champ)", level:59, icon:"👑", color:"#fbbf24"}, // Champ
+  {name:"Anissa",        level:56},
+  {name:"Astor",         level:56},
+  {name:"Kattlea",       level:57},
+  {name:"Eugen",         level:58},
+  {name:"Lilia (Champ)", level:59},
 ];
 
-// Alle Caps chronologisch – type: "gym" | "rival" | "elite" | "champ"
+// Alle Caps in chronologischer Reihenfolge
+// type: "gym" | "rival" | "elite" | "champ"
 export const ALL_CAPS = [
-  {name:"Matisse (Dausing-Hof)",         level:8,  type:"rival", icon:"⚔", rivalKey:"r0"},
-  {name:"Cheren",                         level:13, type:"gym",   badgeIdx:0},
-  {name:"Mica",                           level:18, type:"gym",   badgeIdx:1},
-  {name:"Matisse (Stratos-Kanalisation)", level:20, type:"rival", icon:"⚔", rivalKey:"r1"},
-  {name:"Artie",                          level:24, type:"gym",   badgeIdx:2},
-  {name:"Kamilla",                        level:30, type:"gym",   badgeIdx:3},
-  {name:"Turner",                         level:33, type:"gym",   badgeIdx:4},
-  {name:"Géraldine",                      level:39, type:"gym",   badgeIdx:5},
-  {name:"Matisse (Ondula)",               level:41, type:"rival", icon:"⚔", rivalKey:"r2"},
-  {name:"Matisse (Tessera)",              level:43, type:"rival", icon:"⚔", rivalKey:"r3"},
-  {name:"Lysander",                       level:48, type:"gym",   badgeIdx:6},
-  {name:"Benson",                         level:51, type:"gym",   badgeIdx:7},
-  {name:"Matisse (Siegesstraße)",         level:57, type:"rival", icon:"⚔", rivalKey:"r4"},
-  {name:"Anissa",                         level:56, type:"elite", eliteIdx:0, icon:"👻"},
-  {name:"Astor",                          level:56, type:"elite", eliteIdx:1, icon:"🎴"},
-  {name:"Kattlea",                        level:57, type:"elite", eliteIdx:2, icon:"🔮"},
-  {name:"Eugen",                          level:58, type:"elite", eliteIdx:3, icon:"🥊"},
-  {name:"Lilia (Champ)",                  level:59, type:"champ", eliteIdx:4, icon:"👑"},
+  {name:"Matisse (Dausing-Hof)",          level:8,  type:"rival", rivalKey:"r0"},
+  {name:"Cheren",                          level:13, type:"gym",   badgeIdx:0},
+  {name:"Mica",                            level:18, type:"gym",   badgeIdx:1},
+  {name:"Matisse (Stratos-Kanalisation)",  level:20, type:"rival", rivalKey:"r1"},
+  {name:"Artie",                           level:24, type:"gym",   badgeIdx:2},
+  {name:"Kamilla",                         level:30, type:"gym",   badgeIdx:3},
+  {name:"Turner",                          level:33, type:"gym",   badgeIdx:4},
+  {name:"Géraldine",                       level:39, type:"gym",   badgeIdx:5},
+  {name:"Matisse (Ondula)",                level:41, type:"rival", rivalKey:"r2"},
+  {name:"Matisse (Tessera)",               level:43, type:"rival", rivalKey:"r3"},
+  {name:"Lysander",                        level:48, type:"gym",   badgeIdx:6},
+  {name:"Benson",                          level:51, type:"gym",   badgeIdx:7},
+  {name:"Matisse (Siegesstraße)",          level:57, type:"rival", rivalKey:"r4"},
+  {name:"Anissa",                          level:56, type:"elite", eliteIdx:0},
+  {name:"Astor",                           level:56, type:"elite", eliteIdx:1},
+  {name:"Kattlea",                         level:57, type:"elite", eliteIdx:2},
+  {name:"Eugen",                           level:58, type:"elite", eliteIdx:3},
+  {name:"Lilia (Champ)",                   level:59, type:"champ", eliteIdx:4},
 ];
-
-export const BADGE_COLORS = ["#a8d8ea","#9b5de5","#00bbf9","#fee440","#8B4513","#0dcaf0","#9467bd","#0a9396"];
 
 export const EVO_CHAINS = [
   [1,2,3],[4,5,6],[7,8,9],[10,11,12],[13,14,15],[16,17,18],[19,20],[21,22],

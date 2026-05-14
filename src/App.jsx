@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { ref, push, set } from "firebase/database";
 import { db } from "./firebase.js";
-import { LOCATIONS, GYM_CAPS, ELITE_CAPS, ALL_CAPS, BADGE_COLORS, getEvoChain, C } from "./data.js";
+import { LOCATIONS, GYM_CAPS, ELITE_CAPS, ALL_CAPS, getEvoChain, C } from "./data.js";
 import { fetchGermanPokemonNames, calcCatchRate, catchRateColor } from "./pokemon.js";
 import { useFirebaseSync } from "./useFirebaseSync.js";
 
@@ -1081,15 +1081,15 @@ export default function App() {
           borderBottom: `1px solid ${C.border}`,
           padding: "14px 20px", display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
 
-          {/* ORDEN (1-8) + Top 4 + Champ – alle als "Arena-Trophäen" in einer Reihe */}
+          {/* ORDEN (1-8) + Top 4 + Champ – als einfache Boxen mit Haken */}
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             {ALL_CAPS.filter(c => c.type === "gym" || c.type === "elite" || c.type === "champ").map((c, i) => {
               const isGym = c.type === "gym";
               const isChamp = c.type === "champ";
               const done = isGym ? st.badges[c.badgeIdx] : elitesDone[c.eliteIdx];
               const isNext = currentCapEntry === c;
-              const isClickable = isNext || done; // aktiver klickbar + bereits erledigte zum Rückgängigmachen
-              const glowColor = isChamp ? C.gold : isGym ? GYM_CAPS[c.badgeIdx].color : ELITE_CAPS[c.eliteIdx].color;
+              const isClickable = isNext || done;
+              const label = isGym ? (c.badgeIdx + 1) : isChamp ? "♕" : "E";
 
               return (
                 <button key={i}
@@ -1105,34 +1105,39 @@ export default function App() {
                   title={`${c.name} · Cap Lv ${c.level}`}
                   style={{ background: "none", border: "none",
                     cursor: isClickable ? "pointer" : "default",
-                    padding: 0, transition: "transform .15s" }}
+                    padding: 0, transition: "transform .15s",
+                    position: "relative" }}
                   onMouseEnter={e => { if (isClickable) e.currentTarget.style.transform = "translateY(-2px)" }}
                   onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}>
                   <div style={{
-                    width: 48, height: 48, borderRadius: 12,
-                    background: done
-                      ? `linear-gradient(135deg, ${glowColor}22, ${glowColor}08)`
-                      : `${C.lift}88`,
-                    backdropFilter: "blur(12px)",
+                    width: 44, height: 44, borderRadius: 10,
+                    background: done ? `${C.ok}18` : `${C.lift}88`,
                     border: isNext && !done
-                      ? `1.5px solid ${C.p1}`
-                      : done ? `1px solid ${glowColor}55` : `1px solid ${C.border}`,
+                      ? `2px solid ${C.p1}`
+                      : done ? `1.5px solid ${C.ok}66`
+                      : `1px solid ${C.border}`,
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    filter: done ? "none" : "grayscale(0.7) opacity(0.45)",
+                    fontSize: isChamp ? 20 : 16, fontWeight: 800,
+                    color: done ? C.ok : isNext ? C.p1 : C.dim,
                     boxShadow: isNext && !done
-                      ? `0 0 0 3px ${C.p1}33, 0 0 20px ${C.p1}55, inset 0 1px 0 ${C.p1}33`
-                      : done ? `0 0 14px ${glowColor}33, 0 4px 12px #0008, inset 0 1px 0 #ffffff15`
+                      ? `0 0 0 3px ${C.p1}33, 0 0 14px ${C.p1}55`
+                      : done ? `0 0 10px ${C.ok}22, 0 2px 6px #0006`
                       : "0 2px 6px #0006",
-                    overflow: "hidden",
                     transition: "all .25s",
                     animation: isNext && !done ? "glow 2s ease infinite" : "none" }}>
-                    {isGym ? (
-                      <img src={c.sprite} alt=""
-                        style={{ width: 38, height: 38, objectFit: "contain", imageRendering: "pixelated" }} />
-                    ) : (
-                      <span style={{ fontSize: 22 }}>{ELITE_CAPS[c.eliteIdx].icon}</span>
-                    )}
+                    {label}
                   </div>
+                  {done && (
+                    <div style={{ position: "absolute", top: -4, right: -4,
+                      width: 18, height: 18, borderRadius: "50%",
+                      background: C.ok, color: C.bg,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 11, fontWeight: 900,
+                      boxShadow: `0 0 8px ${C.ok}88, 0 2px 4px #0008`,
+                      border: `2px solid ${C.bg}` }}>
+                      ✓
+                    </div>
+                  )}
                 </button>
               );
             })}
@@ -1140,7 +1145,7 @@ export default function App() {
 
           <div style={{ width: 1, height: 48, background: C.border }} />
 
-          {/* RIVALEN – elegante Pill-Tags */}
+          {/* RIVALEN – Pill-Tags */}
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             <div className="mono" style={{ fontSize: 10, color: C.sub, letterSpacing: 1.5, fontWeight: 600 }}>
               MATISSE
@@ -1165,17 +1170,14 @@ export default function App() {
                     <div style={{
                       padding: "5px 12px", borderRadius: 999,
                       fontSize: 11, fontWeight: 600,
-                      background: done
-                        ? `linear-gradient(135deg, ${C.warn}33, ${C.warn}11)`
-                        : isNext && !done ? `${C.warn}14` : `${C.lift}88`,
-                      backdropFilter: "blur(8px)",
-                      border: isNext && !done
-                        ? `1.5px solid ${C.warn}`
-                        : done ? `1px solid ${C.warn}55` : `1px solid ${C.border}`,
-                      color: done ? C.warn : isNext && !done ? C.warn : C.dim,
+                      background: done ? `${C.ok}18`
+                        : isNext ? `${C.warn}14` : `${C.lift}88`,
+                      border: done ? `1.5px solid ${C.ok}66`
+                        : isNext ? `1.5px solid ${C.warn}`
+                        : `1px solid ${C.border}`,
+                      color: done ? C.ok : isNext ? C.warn : C.dim,
                       boxShadow: isNext && !done ? `0 0 0 2px ${C.warn}22, 0 0 12px ${C.warn}44`
-                        : done ? `0 2px 8px ${C.warn}22` : "none",
-                      transition: "all .25s",
+                        : done ? `0 2px 8px ${C.ok}22` : "none",
                       animation: isNext && !done ? "glowWarn 2s ease infinite" : "none",
                       whiteSpace: "nowrap",
                       display: "flex", alignItems: "center", gap: 4 }}>
@@ -1190,7 +1192,7 @@ export default function App() {
 
           <div style={{ width: 1, height: 48, background: C.border }} />
 
-          {/* Aktueller Cap – elegant gross */}
+          {/* Aktueller Cap */}
           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <div className="mono" style={{ fontSize: 10, color: C.sub, letterSpacing: 1.5, fontWeight: 600 }}>
               {currentCap.type === "rival" ? "CAP · RIVALE"
@@ -1532,24 +1534,30 @@ export default function App() {
                   const isElite = c.type === "elite";
                   const isRival = c.type === "rival";
                   const col = isChamp ? C.gold
-                    : isElite ? (ELITE_CAPS[c.eliteIdx]?.color || C.link)
+                    : isElite ? C.link
                     : isRival ? C.warn
-                    : (isGym ? GYM_CAPS[c.badgeIdx].color : C.p1);
+                    : C.p1;
+                  const symbol = isGym ? String(c.badgeIdx + 1)
+                    : isChamp ? "♕"
+                    : isRival ? "⚔"
+                    : "E";
                   return (
                     <div key={i} style={{
                       display: "flex", alignItems: "center", gap: 10,
-                      background: earned ? `${col}14` : C.lift,
-                      border: `1px solid ${earned ? col + "44" : C.border}`,
-                      borderLeft: `3px solid ${earned ? col : C.border}`,
+                      background: earned ? `${C.ok}10` : C.lift,
+                      border: `1px solid ${earned ? C.ok + "44" : C.border}`,
+                      borderLeft: `3px solid ${earned ? C.ok : C.border}`,
                       borderRadius: 6, padding: "6px 10px",
-                      opacity: earned ? 1 : 0.7 }}>
-                      {isGym ? (
-                        <img src={GYM_CAPS[c.badgeIdx].sprite} alt=""
-                          style={{ width: 22, height: 22, objectFit: "contain",
-                            imageRendering: "pixelated" }} />
-                      ) : (
-                        <span style={{ fontSize: 14, width: 22, textAlign: "center" }}>{c.icon}</span>
-                      )}
+                      opacity: earned ? 1 : 0.75 }}>
+                      <div style={{
+                        width: 22, height: 22, borderRadius: 5,
+                        background: earned ? `${C.ok}22` : `${col}18`,
+                        border: `1px solid ${earned ? C.ok + "55" : col + "44"}`,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: 11, fontWeight: 800,
+                        color: earned ? C.ok : col }}>
+                        {earned ? "✓" : symbol}
+                      </div>
                       <span style={{ fontSize: 12, fontWeight: 700,
                         color: earned ? C.text : C.sub }}>{c.name}</span>
                       <span className="mono" style={{ marginLeft: "auto", fontSize: 11,
