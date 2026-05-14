@@ -1,3 +1,12 @@
+import badge1 from "./assets/badges/badge1.png";
+import badge2 from "./assets/badges/badge2.png";
+import badge3 from "./assets/badges/badge3.png";
+import badge4 from "./assets/badges/badge4.png";
+import badge5 from "./assets/badges/badge5.png";
+import badge6 from "./assets/badges/badge6.png";
+import badge7 from "./assets/badges/badge7.png";
+import badge8 from "./assets/badges/badge8.png";
+
 export const LOCATIONS = [
   // ANFANG (vor 1. Orden)
   {name:"Starter (Bell)",type:"gift"},
@@ -85,14 +94,6 @@ export const LOCATIONS = [
   {name:"Boreos/Voltolos (wandernd)",type:"static"},
 ];
 
-import badge1 from "./assets/badges/badge1.png";
-import badge2 from "./assets/badges/badge2.png";
-import badge3 from "./assets/badges/badge3.png";
-import badge4 from "./assets/badges/badge4.png";
-import badge5 from "./assets/badges/badge5.png";
-import badge6 from "./assets/badges/badge6.png";
-import badge7 from "./assets/badges/badge7.png";
-import badge8 from "./assets/badges/badge8.png";
 
 export const GYM_CAPS = [
   {name:"Cheren",    level:13, sprite:badge1, color:"#c9b574"},
