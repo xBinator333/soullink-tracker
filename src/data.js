@@ -84,16 +84,25 @@ export const LOCATIONS = [
   {name:"Kyurem (Riesengrotte)",type:"static"},
   {name:"Boreos/Voltolos (wandernd)",type:"static"},
 ];
-// Orden-Sprites aus dem Spiel – in public/badges/ abgelegt
+
+import badge1 from "./assets/badges/badge1.png";
+import badge2 from "./assets/badges/badge2.png";
+import badge3 from "./assets/badges/badge3.png";
+import badge4 from "./assets/badges/badge4.png";
+import badge5 from "./assets/badges/badge5.png";
+import badge6 from "./assets/badges/badge6.png";
+import badge7 from "./assets/badges/badge7.png";
+import badge8 from "./assets/badges/badge8.png";
+
 export const GYM_CAPS = [
-  {name:"Cheren",    level:13, sprite:"/badges/badge1.png", color:"#c9b574"},
-  {name:"Mica",      level:18, sprite:"/badges/badge2.png", color:"#b14ec3"},
-  {name:"Artie",     level:24, sprite:"/badges/badge3.png", color:"#7fd35c"},
-  {name:"Kamilla",   level:30, sprite:"/badges/badge4.png", color:"#f7d44a"},
-  {name:"Turner",    level:33, sprite:"/badges/badge5.png", color:"#c89968"},
-  {name:"Géraldine", level:39, sprite:"/badges/badge6.png", color:"#5fbce0"},
-  {name:"Lysander",  level:48, sprite:"/badges/badge7.png", color:"#8b7fd6"},
-  {name:"Benson",    level:51, sprite:"/badges/badge8.png", color:"#4fb5ff"},
+  {name:"Cheren",    level:13, sprite:badge1, color:"#c9b574"},
+  {name:"Mica",      level:18, sprite:badge2, color:"#b14ec3"},
+  {name:"Artie",     level:24, sprite:badge3, color:"#7fd35c"},
+  {name:"Kamilla",   level:30, sprite:badge4, color:"#f7d44a"},
+  {name:"Turner",    level:33, sprite:badge5, color:"#c89968"},
+  {name:"Géraldine", level:39, sprite:badge6, color:"#5fbce0"},
+  {name:"Lysander",  level:48, sprite:badge7, color:"#8b7fd6"},
+  {name:"Benson",    level:51, sprite:badge8, color:"#4fb5ff"},
 ];
 // (keine echten Badges, daher icon statt sprite)
 export const ELITE_CAPS = [
