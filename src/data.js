@@ -84,7 +84,6 @@ export const LOCATIONS = [
   {name:"Kyurem (Riesengrotte)",type:"static"},
   {name:"Boreos/Voltolos (wandernd)",type:"static"},
 ];
-
 // Orden-Sprites aus dem Spiel – in public/badges/ abgelegt
 export const GYM_CAPS = [
   {name:"Cheren",    level:13, sprite:"/badges/badge1.png", color:"#c9b574"},
@@ -96,8 +95,6 @@ export const GYM_CAPS = [
   {name:"Lysander",  level:48, sprite:"/badges/badge7.png", color:"#8b7fd6"},
   {name:"Benson",    level:51, sprite:"/badges/badge8.png", color:"#4fb5ff"},
 ];
-
-// Top 4 + Champ – als zusätzliche "Arenakämpfe" mit Symbolen
 // (keine echten Badges, daher icon statt sprite)
 export const ELITE_CAPS = [
   {name:"Anissa",        level:56, icon:"👻", color:"#a78bfa"}, // Geist
