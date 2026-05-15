@@ -180,7 +180,7 @@ function EncCard({ enc, player, linkStatus, cap, onStatus, onDelete, onRevive })
 }
 
 // Grosse Team-Karte für den Tracker – prominenter Sprite, später aufklappbar für Details
-function TeamCard({ enc, player, linkStatus, cap, onStatus, onDelete, partnerEnc }) {
+function TeamCard({ enc, player, linkStatus, cap, onStatus, onDelete, partnerEnc, onEvolve, pokemonList }) {
   const [expanded, setExpanded] = useState(false);
   const acc = player === "p1" ? C.p1 : C.p2;
   const isOver = enc.level && cap && enc.level > cap;
@@ -280,6 +280,24 @@ function TeamCard({ enc, player, linkStatus, cap, onStatus, onDelete, partnerEnc
           <div style={{ fontSize: 10, color: C.dim, marginBottom: 10, fontStyle: "italic" }}>
             Detailinfos (Attacken, Stats) folgen sobald Lua-Anbindung aktiv ist
           </div>
+          {/* Evolution */}
+          {enc.speciesId && (() => {
+            const chain = getEvoChain(enc.speciesId);
+            const idx = chain.indexOf(enc.speciesId);
+            const nextId = idx >= 0 && idx < chain.length - 1 ? chain[idx + 1] : null;
+            const nextPoke = nextId ? pokemonList.find(p => p.id === nextId) : null;
+            if (!nextPoke) return null;
+            return (
+              <button onClick={() => onEvolve(nextPoke)} style={{
+                width: "100%", padding: "7px 12px", borderRadius: 7, cursor: "pointer",
+                border: `1px solid ${C.link}55`, background: `${C.link}12`,
+                color: C.link, fontWeight: 700, fontSize: 11, marginBottom: 8,
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                <Sprite slug={nextPoke.slug} size={28} />
+                → Entwickeln zu {nextPoke.name}
+              </button>
+            );
+          })()}
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             <button onClick={() => onStatus("box")} style={{
               fontFamily: "'Exo 2',sans-serif", fontWeight: 600, fontSize: 10,
@@ -681,6 +699,7 @@ export default function App() {
   const [loadProgress, setLoadProgress] = useState(0);
   const [showRunEnd, setShowRunEnd] = useState(false);
   const [showStats, setShowStats] = useState(false);
+  const prevRunEndedRef = useRef(false);
 
   // Pokémon-Liste laden
   useEffect(() => {
@@ -689,7 +708,25 @@ export default function App() {
       .catch(err => { console.error(err); setLoading(false) });
   }, []);
 
-  // Login-Screen zeigen wenn nicht authentifiziert
+  // Run-Ende erkennen sobald syncState sich ändert
+  useEffect(() => {
+    if (!syncState) return;
+    const st = syncState;
+    const p1Alive = st.p1.encounters.filter(e => e.status === "team" || e.status === "box").length;
+    const p2Alive = st.p2.encounters.filter(e => e.status === "team" || e.status === "box").length;
+    const p1Pending = st.p1.encounters.filter(e => e.status === "pending").length;
+    const p2Pending = st.p2.encounters.filter(e => e.status === "pending").length;
+    const totalFinished = st.p1.encounters.filter(e => e.status !== "pending").length
+      + st.p2.encounters.filter(e => e.status !== "pending").length;
+    const ended = totalFinished > 0 && p1Alive === 0 && p2Alive === 0 && p1Pending === 0 && p2Pending === 0;
+    if (ended && !prevRunEndedRef.current && !st.runEndedShown) {
+      setShowRunEnd(true);
+      writeState({ ...st, runEndedShown: true });
+    }
+    prevRunEndedRef.current = ended;
+  }, [syncState]);
+
+
   if (authState === "loading") {
     return (
       <>
@@ -755,10 +792,10 @@ export default function App() {
   const rivalsDone = st.rivalsDone || {};
   const elitesDone = st.elitesDone || {};
 
-  // Aktiver Cap = nächster noch nicht erledigter Eintrag in ALL_CAPS
+  // Aktiver Cap = nächster noch nicht erledigter Gym/Elite/Champ-Eintrag (Rivalen ignoriert)
   const nextCapIdx = ALL_CAPS.findIndex(c => {
+    if (c.type === "rival") return false; // Rivalen werden nicht mehr getrackt
     if (c.type === "gym") return !st.badges[c.badgeIdx];
-    if (c.type === "rival") return !rivalsDone[c.rivalKey];
     if (c.type === "elite" || c.type === "champ") return !elitesDone[c.eliteIdx];
     return false;
   });
@@ -809,8 +846,11 @@ export default function App() {
     const enc = st[pk].encounters.find(e => e.id === encId);
     if (!enc) return;
 
-    // Gefangen → immer in die Box, K.O./Fled → entsprechender Grab-Status
-    const finalStatus = data.outcome === "caught" ? "box" : data.outcome;
+    // Gefangen → Team wenn noch Platz (<6), sonst Box. K.O./Fled → Grab-Status
+    const myTeamSize = st[pk].encounters.filter(e => e.status === "team").length;
+    const finalStatus = data.outcome === "caught"
+      ? (myTeamSize < 6 ? "team" : "box")
+      : data.outcome;
 
     const updatedEnc = {
       ...enc,
@@ -968,6 +1008,20 @@ export default function App() {
     }
   }
 
+  function evolveEnc(pk, encId, newPoke) {
+    writeState({
+      ...st,
+      [pk]: {
+        ...st[pk],
+        encounters: st[pk].encounters.map(e =>
+          e.id === encId
+            ? { ...e, speciesId: newPoke.id, name: newPoke.name, slug: newPoke.slug }
+            : e
+        ),
+      },
+    });
+  }
+
   function delEnc(pk, encId) {
     writeState({
       ...st,
@@ -983,6 +1037,9 @@ export default function App() {
       p2: { ...st.p2, encounters: [] },
       badges: Array(8).fill(false),
       links: [],
+      elitesDone: {},
+      rivalsDone: {},
+      customLocations: [],
       runNumber: st.runNumber + 1,
       runEndedShown: false,
     });
@@ -1145,58 +1202,10 @@ export default function App() {
 
           <div style={{ width: 1, height: 48, background: C.border }} />
 
-          {/* RIVALEN – Pill-Tags */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <div className="mono" style={{ fontSize: 10, color: C.sub, letterSpacing: 1.5, fontWeight: 600 }}>
-              MATISSE
-            </div>
-            <div style={{ display: "flex", gap: 5 }}>
-              {ALL_CAPS.filter(c => c.type === "rival").map((c, i) => {
-                const done = rivalsDone[c.rivalKey];
-                const isNext = currentCapEntry === c;
-                const isClickable = isNext || done;
-                return (
-                  <button key={i}
-                    onClick={() => {
-                      if (!isClickable) return;
-                      writeState({ ...st, rivalsDone: { ...rivalsDone, [c.rivalKey]: !rivalsDone[c.rivalKey] } });
-                    }}
-                    title={`${c.name} · Cap Lv ${c.level}`}
-                    style={{ background: "none", border: "none",
-                      cursor: isClickable ? "pointer" : "default",
-                      padding: 0, transition: "transform .15s" }}
-                    onMouseEnter={e => { if (isClickable) e.currentTarget.style.transform = "translateY(-1px)" }}
-                    onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}>
-                    <div style={{
-                      padding: "5px 12px", borderRadius: 999,
-                      fontSize: 11, fontWeight: 600,
-                      background: done ? `${C.ok}18`
-                        : isNext ? `${C.warn}14` : `${C.lift}88`,
-                      border: done ? `1.5px solid ${C.ok}66`
-                        : isNext ? `1.5px solid ${C.warn}`
-                        : `1px solid ${C.border}`,
-                      color: done ? C.ok : isNext ? C.warn : C.dim,
-                      boxShadow: isNext && !done ? `0 0 0 2px ${C.warn}22, 0 0 12px ${C.warn}44`
-                        : done ? `0 2px 8px ${C.ok}22` : "none",
-                      animation: isNext && !done ? "glowWarn 2s ease infinite" : "none",
-                      whiteSpace: "nowrap",
-                      display: "flex", alignItems: "center", gap: 4 }}>
-                      {done && <span style={{ fontSize: 10 }}>✓</span>}
-                      <span>Lv {c.level}</span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div style={{ width: 1, height: 48, background: C.border }} />
-
           {/* Aktueller Cap */}
           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <div className="mono" style={{ fontSize: 10, color: C.sub, letterSpacing: 1.5, fontWeight: 600 }}>
-              {currentCap.type === "rival" ? "CAP · RIVALE"
-                : currentCap.type === "gym" ? "CAP · ARENA"
+              {currentCap.type === "gym" ? "CAP · ARENA"
                 : currentCap.type === "champ" ? "CAP · CHAMP"
                 : "CAP · TOP 4"}
             </div>
@@ -1320,7 +1329,9 @@ export default function App() {
                           <TeamCard key={enc.id} enc={enc} player={k}
                             linkStatus={getLinkStatus(k, enc)} cap={capLevel}
                             partnerEnc={partnerEnc}
+                            pokemonList={pokemonList}
                             onStatus={s => setStatus(k, enc.id, s)}
+                            onEvolve={newPoke => evolveEnc(k, enc.id, newPoke)}
                             onDelete={() => delEnc(k, enc.id)} />
                         );
                       })}
@@ -1525,22 +1536,13 @@ export default function App() {
                 LEVEL CAPS – CHRONOLOGISCH
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                {ALL_CAPS.map((c, i) => {
+                {ALL_CAPS.filter(c => c.type !== "rival").map((c, i) => {
                   const isGym = c.type === "gym";
-                  const earned = isGym ? st.badges[c.badgeIdx]
-                    : c.type === "rival" ? rivalsDone[c.rivalKey]
-                    : elitesDone[c.eliteIdx];
+                  const earned = isGym ? st.badges[c.badgeIdx] : elitesDone[c.eliteIdx];
                   const isChamp = c.type === "champ";
                   const isElite = c.type === "elite";
-                  const isRival = c.type === "rival";
-                  const col = isChamp ? C.gold
-                    : isElite ? C.link
-                    : isRival ? C.warn
-                    : C.p1;
-                  const symbol = isGym ? String(c.badgeIdx + 1)
-                    : isChamp ? "♕"
-                    : isRival ? "⚔"
-                    : "E";
+                  const col = isChamp ? C.gold : isElite ? C.link : C.p1;
+                  const symbol = isGym ? String(c.badgeIdx + 1) : isChamp ? "♕" : "E";
                   return (
                     <div key={i} style={{
                       display: "flex", alignItems: "center", gap: 10,
