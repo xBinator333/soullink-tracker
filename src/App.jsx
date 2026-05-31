@@ -281,41 +281,44 @@ function TeamCard({ enc, player, linkStatus, cap, onStatus, onDelete, partnerEnc
             Detailinfos (Attacken, Stats) folgen sobald Lua-Anbindung aktiv ist
           </div>
           {/* Evolution */}
-{enc.speciesId && (() => {
-  const evos = getDirectEvolutions(pokemonList, enc.speciesId);
-  if (evos.length === 0) return null;
+          {enc.speciesId && (() => {
+            const evos = getDirectEvolutions(pokemonList, enc.speciesId);
+            if (evos.length === 0) return null;
 
-  // Eine Evolution: grosser Button wie bisher
-  if (evos.length === 1) {
-    const nextPoke = evos[0];
-    return (
-      <button onClick={() => onEvolve(nextPoke)} style={{
-        width: "100%", padding: "7px 12px", borderRadius: 7, cursor: "pointer",
-        border: `1px solid ${C.link}55`, background: `${C.link}12`,
-        color: C.link, fontWeight: 700, fontSize: 11, marginBottom: 8,
-        display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-        <Sprite slug={nextPoke.slug} size={28} />
-        → Entwickeln zu {nextPoke.name}
-      </button>
-    );
-  }
+            // Eine Evolution: grosser Button wie bisher
+            if (evos.length === 1) {
+              const nextPoke = evos[0];
+              return (
+                <button onClick={() => onEvolve(nextPoke)} style={{
+                  width: "100%", padding: "7px 12px", borderRadius: 7, cursor: "pointer",
+                  border: `1px solid ${C.link}55`, background: `${C.link}12`,
+                  color: C.link, fontWeight: 700, fontSize: 11, marginBottom: 8,
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                  <Sprite slug={nextPoke.slug} size={28} />
+                  → Entwickeln zu {nextPoke.name}
+                </button>
+              );
+            }
 
-  // Verzweigte Evolution (Evoli, Wablu, Slowpoke …): alle Optionen anzeigen
-  return (
-    <div style={{ marginBottom: 8 }}>
-      <div className="mono" style={{ fontSize: 9, color: C.sub, marginBottom: 4 }}>
-        ENTWICKELN ZU…
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-        {evos.map(nextPoke => (
-          <button key={nextPoke.id} onClick={() => onEvolve(nextPoke)} style={{
-            width: "100%", padding: "5px 10px", borderRadius: 6, cursor: "pointer",
-            border: `1px solid ${C.link}44`, background: `${C.link}10`,
-            color: C.link, fontWeight: 600, fontSize: 10,
-            display: "flex", alignItems: "center", gap: 8 }}>
-            <Sprite slug={nextPoke.slug} size={22} />
-            <span>→ {nextPoke.name}</span>
-          </button>
+            // Verzweigte Evolution (Evoli, Wablu, Slowpoke …): alle Optionen anzeigen
+            return (
+              <div style={{ marginBottom: 8 }}>
+                <div className="mono" style={{ fontSize: 9, color: C.sub, marginBottom: 4 }}>
+                  ENTWICKELN ZU…
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                  {evos.map(nextPoke => (
+                    <button key={nextPoke.id} onClick={() => onEvolve(nextPoke)} style={{
+                      width: "100%", padding: "5px 10px", borderRadius: 6, cursor: "pointer",
+                      border: `1px solid ${C.link}44`, background: `${C.link}10`,
+                      color: C.link, fontWeight: 600, fontSize: 10,
+                      display: "flex", alignItems: "center", gap: 8 }}>
+                      <Sprite slug={nextPoke.slug} size={22} />
+                      <span>→ {nextPoke.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             );
           })()}
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -363,7 +366,7 @@ function EncModal({ mode, pendingEnc, pokemonList, player, customLocations, used
   const acc = player === "p1" ? C.p1 : C.p2;
   const allLocations = [...LOCATIONS, ...customLocations];
   const filteredLocs = locQ.length < 1 ? allLocations : allLocations.filter(l => l.name.toLowerCase().includes(locQ.toLowerCase()));
- const warnings = [];
+  const warnings = [];
   if (mode === "start" && location && usedRoutes.includes(location.name)) warnings.push(`„${location.name}" bereits verbraucht`);
   // Dupes-Clause: Familie schon gefangen?
   // - Statics dürfen IMMER gefangen werden (auch wenn Familie schon wild da war)
@@ -380,6 +383,7 @@ function EncModal({ mode, pendingEnc, pokemonList, player, customLocations, used
     if (hit) {
       const locLabel = hit.locationType === "static" ? "⭐ " : "";
       warnings.push(`${hit.name} (Evo-Linie) bereits gefangen auf ${locLabel}${hit.route}`);
+    }
   }
   const partnerOnLoc = (mode === "finish" && location)
     ? partnerEncs.find(e => e.route === location.name && e.status !== "pending")
